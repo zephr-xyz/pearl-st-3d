@@ -150,17 +150,7 @@ back.position.set(-10, 40, -50);
 scene.add(back);
 
 // Ground plane
-// Ground plane — Mapbox Streets warm cream land
-const groundGeom = new THREE.PlaneGeometry(600, 600);
-const groundMat = new THREE.MeshStandardMaterial({
-  color: 0xf2e8dc, roughness: 0.95, metalness: 0,
-  polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4
-});
-const ground = new THREE.Mesh(groundGeom, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.05;
-ground.receiveShadow = true;
-scene.add(ground);
+// Ground plane removed — terrain mesh serves as ground
 
 // Sky — light warm tone matching Mapbox land
 scene.background = new THREE.Color(0xf2e8dc);
@@ -168,6 +158,43 @@ scene.background = new THREE.Color(0xf2e8dc);
 // Load scene data
 const resp = await fetch('scene.json');
 const data = await resp.json();
+
+// Load terrain for elevation lookup
+const terrainResp = await fetch('terrain.json');
+const terrain = await terrainResp.json();
+const tW = terrain.width, tH = terrain.height;
+const baseElev = terrain.base_elevation;
+const cosLat = Math.cos(terrain.ref_lat * Math.PI / 180);
+const mPerDegLat = 111320;
+const mPerDegLon = 111320 * cosLat;
+const terrainWidthM = (terrain.se_lon - terrain.nw_lon) * mPerDegLon;
+const terrainHeightM = (terrain.nw_lat - terrain.se_lat) * mPerDegLat;
+const terrainCenterX = (((terrain.nw_lon + terrain.se_lon) / 2) - terrain.ref_lon) * mPerDegLon;
+const terrainCenterZ = (((terrain.nw_lat + terrain.se_lat) / 2) - terrain.ref_lat) * mPerDegLat;
+
+// Sample terrain elevation at scene (x, z) coordinates
+function getTerrainElevation(x, z) {
+  // Convert scene coords to terrain grid position
+  // Scene: x = (lon - ref_lon)*mPerDegLon, z = (lat - ref_lat)*mPerDegLat
+  // Terrain grid: col = (lon - nw_lon)/(se_lon - nw_lon)*(tW-1)
+  //               row = (nw_lat - lat)/(nw_lat - se_lat)*(tH-1)
+  // x = (lon - ref_lon)*mPerDegLon → lon = x/mPerDegLon + ref_lon
+  // z = (lat - ref_lat)*mPerDegLat → lat = z/mPerDegLat + ref_lat
+  const lon = x / mPerDegLon + terrain.ref_lon;
+  const lat = z / mPerDegLat + terrain.ref_lat;
+  const col = (lon - terrain.nw_lon) / (terrain.se_lon - terrain.nw_lon) * (tW - 1);
+  const row = (terrain.nw_lat - lat) / (terrain.nw_lat - terrain.se_lat) * (tH - 1);
+  if (col < 0 || col >= tW - 1 || row < 0 || row >= tH - 1) return 0;
+  // Bilinear interpolation
+  const c0 = Math.floor(col), c1 = c0 + 1;
+  const r0 = Math.floor(row), r1 = r0 + 1;
+  const fc = col - c0, fr = row - r0;
+  const e00 = terrain.elevations[r0 * tW + c0] - baseElev;
+  const e01 = terrain.elevations[r0 * tW + c1] - baseElev;
+  const e10 = terrain.elevations[r1 * tW + c0] - baseElev;
+  const e11 = terrain.elevations[r1 * tW + c1] - baseElev;
+  return e00 * (1-fc)*(1-fr) + e01 * fc*(1-fr) + e10 * (1-fc)*fr + e11 * fc*fr;
+}
 
 // Texture cache
 const textures = {};
@@ -757,6 +784,8 @@ function rebuildScene(mode) {
 
   for (const bld of data.buildings) {
     const mesh = createBuilding(bld, mode);
+    const cx = bld.centroid_m[0], cz = bld.centroid_m[1];
+    mesh.position.y = getTerrainElevation(cx, cz);
     scene.add(mesh);
     buildingGroups.push(mesh);
   }
@@ -791,14 +820,13 @@ for (const feat of (data.ground_features || [])) {
   const color = groundFeatureColors[feat.subtype] || 0x88aa66;
   const roughness = groundFeatureRoughness[feat.subtype] || 0.9;
   const isVegetation = ['park', 'recreation', 'managed', 'horticulture', 'protected', 'grass', 'forest'].includes(feat.subtype);
-  const y = -0.03;
 
   const triPts = triangulatePoly(feat.points);
   if (triPts.length < 3) continue;
 
   const verts = [];
   for (const p of triPts) {
-    verts.push(p[0], y, p[1]);
+    verts.push(p[0], getTerrainElevation(p[0], p[1]) + 0.05, p[1]);
   }
 
   const geom = new THREE.BufferGeometry();
@@ -825,7 +853,7 @@ for (const feat of (data.ground_features || [])) {
       attempts++;
       const tx = minX + Math.random() * (maxX - minX);
       const ty = minY + Math.random() * (maxY - minY);
-      tufts.push(tx, 0.08, ty);
+      tufts.push(tx, getTerrainElevation(tx, ty) + 0.15, ty);
       placed++;
     }
     if (tufts.length > 0) {
@@ -855,10 +883,12 @@ for (const road of (data.roads || [])) {
     const len = Math.sqrt(dx*dx + dz*dz);
     if (len < 0.3) continue;
     const nx = -dz / len * hw, nz = dx / len * hw;
+    const y0t = getTerrainElevation(x0, z0) + y;
+    const y1t = getTerrainElevation(x1, z1) + y;
 
     verts.push(
-      x0 + nx, y, z0 + nz, x1 + nx, y, z1 + nz, x1 - nx, y, z1 - nz,
-      x0 + nx, y, z0 + nz, x1 - nx, y, z1 - nz, x0 - nx, y, z0 - nz
+      x0 + nx, y0t, z0 + nz, x1 + nx, y1t, z1 + nz, x1 - nx, y1t, z1 - nz,
+      x0 + nx, y0t, z0 + nz, x1 - nx, y1t, z1 - nz, x0 - nx, y0t, z0 - nz
     );
   }
   if (verts.length === 0) continue;
@@ -902,15 +932,17 @@ for (const road of (data.roads || [])) {
       const ix1 = x1 + nx * innerOff * side, iz1 = z1 + nz * innerOff * side;
       const ox0 = x0 + nx * outerOff * side, oz0 = z0 + nz * outerOff * side;
       const ox1 = x1 + nx * outerOff * side, oz1 = z1 + nz * outerOff * side;
+      const ey0 = getTerrainElevation(x0, z0);
+      const ey1 = getTerrainElevation(x1, z1);
 
       swVerts.push(
-        ix0, swY, iz0, ix1, swY, iz1, ox1, swY, oz1,
-        ix0, swY, iz0, ox1, swY, oz1, ox0, swY, oz0
+        ix0, ey0 + swY, iz0, ix1, ey1 + swY, iz1, ox1, ey1 + swY, oz1,
+        ix0, ey0 + swY, iz0, ox1, ey1 + swY, oz1, ox0, ey0 + swY, oz0
       );
 
       curbVerts.push(
-        ix0, 0, iz0, ix1, 0, iz1, ix1, curbH, iz1,
-        ix0, 0, iz0, ix1, curbH, iz1, ix0, curbH, iz0
+        ix0, ey0, iz0, ix1, ey1, iz1, ix1, ey1 + curbH, iz1,
+        ix0, ey0, iz0, ix1, ey1 + curbH, iz1, ix0, ey0 + curbH, iz0
       );
     }
     if (swVerts.length > 0) {
@@ -941,15 +973,16 @@ for (const tree of (data.trees || [])) {
   const trunkH = 2.5 * scale + (seed % 5) * 0.2;
   const trunkR = 0.12 + (seed % 3) * 0.04;
 
+  const treeElev = getTerrainElevation(tree.x, tree.y);
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.7, trunkR, trunkH, 8), trunkMat);
-  trunk.position.set(tree.x, trunkH / 2, tree.y);
+  trunk.position.set(tree.x, treeElev + trunkH / 2, tree.y);
   trunk.castShadow = true;
   scene.add(trunk);
 
   const cColor = canopyColors[seed % canopyColors.length];
   const cMat = new THREE.MeshStandardMaterial({ color: cColor, roughness: 0.85, flatShading: true });
   const clusters = 3 + (seed % 3);
-  const baseY = trunkH + 1.2 * scale;
+  const baseY = treeElev + trunkH + 1.2 * scale;
   for (let c = 0; c < clusters; c++) {
     const cr = (1.2 + (c % 2) * 0.5) * scale;
     const angle = (c / clusters) * Math.PI * 2 + seed;
@@ -1000,7 +1033,7 @@ for (const bench of (data.benches || [])) {
     bGroup.add(arm);
   }
 
-  bGroup.position.set(bench.x, 0, bench.y);
+  bGroup.position.set(bench.x, getTerrainElevation(bench.x, bench.y), bench.y);
   bGroup.traverse(c => { if (c.isMesh) c.castShadow = true; });
   scene.add(bGroup);
 }
@@ -1024,7 +1057,7 @@ for (const rack of (data.bike_racks || [])) {
 
   const angle = (Math.abs(rack.x * 5 + rack.y * 11) | 0) % 2 === 0 ? 0 : Math.PI / 2;
   rGroup.rotation.y = angle;
-  rGroup.position.set(rack.x, 0, rack.y);
+  rGroup.position.set(rack.x, getTerrainElevation(rack.x, rack.y), rack.y);
   rGroup.traverse(c => { if (c.isMesh) c.castShadow = true; });
   scene.add(rGroup);
 }
@@ -1064,7 +1097,7 @@ for (const road of (data.roads || [])) {
       lamp.position.set(0.7, 4.2, 0);
       lGroup.add(lamp);
 
-      lGroup.position.set(lx, 0, lz);
+      lGroup.position.set(lx, getTerrainElevation(lx, lz), lz);
       lGroup.rotation.y = Math.atan2(dx, dz);
       lGroup.traverse(c => { if (c.isMesh) c.castShadow = true; });
       scene.add(lGroup);
@@ -1098,20 +1131,11 @@ for (const label of (data.street_labels || [])) {
   mesh.rotation.x = -Math.PI / 2;
   const angleRad = label.angle * Math.PI / 180;
   mesh.rotation.z = -angleRad;
-  mesh.position.set(label.x, 0.08, label.y);
+  mesh.position.set(label.x, getTerrainElevation(label.x, label.y) + 0.08, label.y);
   scene.add(mesh);
 }
 
-// Terrain — background mountains from elevation tiles
-const terrainResp = await fetch('terrain.json');
-const terrain = await terrainResp.json();
-
-const tW = terrain.width, tH = terrain.height;
-const baseElev = terrain.base_elevation;
-const cosLat = Math.cos(terrain.ref_lat * Math.PI / 180);
-const mPerDegLat = 111320;
-const mPerDegLon = 111320 * cosLat;
-
+// Terrain mesh — background mountains
 const terrainGeom = new THREE.PlaneGeometry(
   (terrain.se_lon - terrain.nw_lon) * mPerDegLon,
   (terrain.nw_lat - terrain.se_lat) * mPerDegLat,
@@ -1158,13 +1182,7 @@ const terrainMat = new THREE.MeshStandardMaterial({
 const terrainMesh = new THREE.Mesh(terrainGeom, terrainMat);
 terrainMesh.rotation.x = -Math.PI / 2;
 
-// Position terrain so scene center aligns with ref point
-// Scene coords: X = (lon - ref_lon) * mPerDegLon, Z = (lat - ref_lat) * mPerDegLat
-const terrainCenterLon = (terrain.nw_lon + terrain.se_lon) / 2;
-const terrainCenterLat = (terrain.nw_lat + terrain.se_lat) / 2;
-const tcX = (terrainCenterLon - terrain.ref_lon) * mPerDegLon;
-const tcZ = (terrainCenterLat - terrain.ref_lat) * mPerDegLat;
-terrainMesh.position.set(tcX, -0.1, tcZ);
+terrainMesh.position.set(terrainCenterX, -0.1, terrainCenterZ);
 terrainMesh.receiveShadow = true;
 scene.add(terrainMesh);
 
