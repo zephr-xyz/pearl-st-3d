@@ -107,7 +107,7 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xd4eaf7, 800, 6000);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 8000);
-camera.position.set(90, 35, -55);
+camera.position.set(180, 80, -120);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1257,7 +1257,7 @@ document.getElementById('btn-birds').addEventListener('click', () => {
   controls.target.set(0, 0, 0);
 });
 document.getElementById('btn-orbit').addEventListener('click', () => {
-  camera.position.set(90, 35, -55);
+  camera.position.set(180, 80, -120);
   controls.target.set(-10, 4, -20);
 });
 
