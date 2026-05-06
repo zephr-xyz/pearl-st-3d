@@ -1,0 +1,875 @@
+[
+  {
+    "id": "637c3fbf-b9f4-4499-9600-096d1a45a330",
+    "name": "Independent Order of Odd Fellows",
+    "latitude": 40.01904211371193,
+    "longitude": -105.27501404285431,
+    "description": "The Independent Order of Odd Fellows (IOOF) is a fraternal organization offering a range of services, historically including banking, insurance, and social support. While primarily serving its members, the IOOF often provides community-focused services accessible to the general public, such as public libraries with Wi-Fi, meeting spaces for community events, and sometimes even basic postal services. People visit IOOF facilities for these community services, seeking resources and a sense of belonging within their local area. Address: 1543 Pearl St. Phone: +13034425669.",
+    "types": "social_or_community_service",
+    "embedding_document": "Independent Order of Odd Fellows, community_services_non_profits. The Independent Order of Odd Fellows (IOOF) is a fraternal organization offering a range of services, historically including banking, insurance, and social support. While primarily serving its members, the IOOF often provides community-focused services accessible to the general public, such as public libraries with Wi-Fi, meeting spaces for community events, and sometimes even basic postal services. People visit IOOF facilities for these community services, seeking resources and a sense of belonging within their local area. Address: 1543 Pearl St. Phone: +13034425669.",
+    "visual_description": "The Independent Order of Odd Fellows (IOOF) occupies a historic three-story red brick and sandstone Romanesque Revival building dating to 1899, prominently located at a city intersection. The building features decorative architectural elements including arched third-floor windows, a central pediment, and corner signage identifying the Odd Fellows and Rebekah Lodge. Its ground floor currently hosts a \"2nd Street\" secondhand clothing store, with large window banners advertising an upcoming retail space for buying and selling men's and women's accessories. The structure stands in a dense urban commercial district, surrounded by modern buildings, parked vehicles, and pedestrian infrastructure like crosswalks and utility poles. The building's weathered red brick and white stone accents create a striking visual contrast against the clear blue sky and contemporary urban landscape.",
+    "enclosing_roads": [
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      }
+    ],
+    "phone": "+13034425669",
+    "address": "1543 Pearl St",
+    "facebook_id": "263067720711021",
+    "entrance_lat": 40.01905173548351,
+    "entrance_lon": -105.27492235191932,
+    "mapillary_ids": [
+      "726969917133299",
+      "2624712061261433",
+      "762568873544951",
+      "1524535085286813",
+      "789312466045486",
+      "262884259497590",
+      "4348278032069078",
+      "947905526352876",
+      "827838177805747",
+      "515356966540900",
+      "448675844658405"
+    ],
+    "website": "http://www.ioof.org/",
+    "overture_building_id": "f61c4184-d69c-4fc7-b873-1d42d8b69c8e",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "aa7b68fc-02d5-43fc-8fc2-9b42d3d0477d",
+    "name": "Marpa Landscape Architecture",
+    "latitude": 40.0189773,
+    "longitude": -105.2750904,
+    "description": "Maarpa Landscape Architecture is a building construction service specializing in design and construction for residential and commercial clients. We cater to homeowners, businesses, and developers seeking architectural planning, construction management, and landscape design services to bring their building projects to life. People visit us when planning new construction, renovations, or seeking expert guidance on architectural design and project execution. Address: 1539 Pearl St. Phone: +13034425220.",
+    "types": "building_construction_service",
+    "embedding_document": "Marpa Landscape Architecture, construction_services. Maarpa Landscape Architecture is a building construction service specializing in design and construction for residential and commercial clients. We cater to homeowners, businesses, and developers seeking architectural planning, construction management, and landscape design services to bring their building projects to life. People visit us when planning new construction, renovations, or seeking expert guidance on architectural design and project execution. Address: 1539 Pearl St. Phone: +13034425220.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      }
+    ],
+    "phone": "+13034425220",
+    "address": "1539 Pearl St",
+    "facebook_id": "273545891359",
+    "entrance_lat": 40.019036,
+    "entrance_lon": -105.2750134,
+    "mapillary_ids": [
+      "762568873544951",
+      "719666810912568",
+      "861189296768069",
+      "3129710173897549",
+      "197339983077745",
+      "262884259497590",
+      "6148238538594745",
+      "260197232513845",
+      "807130760236573",
+      "237415281494194"
+    ],
+    "website": "http://www.marpa.com/",
+    "overture_building_id": "f61c4184-d69c-4fc7-b873-1d42d8b69c8e",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "4aa865d1-3374-4367-83b2-d32806b85d01",
+    "name": "PosterScene",
+    "latitude": 40.0189013,
+    "longitude": -105.2755008,
+    "description": "PosterScene is a gift shop specializing in wall decor like posters, canvases, and framed prints, alongside unique home goods and quirky gifts.  It caters to everyday shoppers looking for affordable home accents, as well as specialty buyers seeking unique art and decorative items.  PosterScene stands out with a wide selection of visually appealing products, a focus on artistic and design-forward items, and a range of price points to suit various budgets. Address: 1505 Pearl St. Phone: +13034433102.",
+    "types": "gift_shop",
+    "embedding_document": "PosterScene, gift_shop. PosterScene is a gift shop specializing in wall decor like posters, canvases, and framed prints, alongside unique home goods and quirky gifts.  It caters to everyday shoppers looking for affordable home accents, as well as specialty buyers seeking unique art and decorative items.  PosterScene stands out with a wide selection of visually appealing products, a focus on artistic and design-forward items, and a range of price points to suit various budgets. Address: 1505 Pearl St. Phone: +13034433102.",
+    "visual_description": "PosterScene is a vibrant pop culture poster shop located in a reddish-orange brick building with large plate-glass windows framed in navy blue steel. The storefront displays a colorful psychedelic banner and features an extensive collection of posters ranging from sci-fi movie prints to vintage travel and entertainment memorabilia. A white A-frame sign out front advertises a clearance sale, attracting passersby with its bold red and blue lettering. Behind the building, a curved concrete plaza with circular gathering spaces and multiple benches provides additional outdoor amenities. Adjacent to the poster shop is The Dragonfly, a holistic day spa, creating a diverse commercial strip with a neighborhood feel.",
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13034433102",
+    "address": "1505 Pearl St",
+    "facebook_id": "135885039774118",
+    "entrance_lat": 40.01893728372638,
+    "entrance_lon": -105.2755134791774,
+    "mapillary_ids": [
+      "596932048989791",
+      "1398260804253078",
+      "928978491580216",
+      "1307354810189651",
+      "511922939944901",
+      "265442078605521",
+      "343389807405361",
+      "538616563806271",
+      "180476393926176",
+      "1033898720738443"
+    ],
+    "website": "http://www.posterscene.com/",
+    "overture_building_id": "954cb30c-1eb3-41e2-b7b0-f6640a4c3595",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "312c20c3-a3c6-4818-803b-5d7e97df3d51",
+    "name": "Mountain Sun Pub & Brewery",
+    "latitude": 40.0189989772161,
+    "longitude": -105.275227278471,
+    "description": "Mountain Sun Pub & Brewery is a casual brewery serving up delicious pub fare perfect for lunch or dinner. Expect a relaxed atmosphere ideal for families, friends, or a casual get-together, with a wide selection of craft beers on tap to complement their hearty dishes. It's a popular spot for a laid-back meal and enjoying local brews, making it a great choice for those seeking a tasty, unpretentious dining experience. Address: 1535 Pearl St. Phone: +13035460886.",
+    "types": "brewery",
+    "embedding_document": "Mountain Sun Pub & Brewery, brewery. Mountain Sun Pub & Brewery is a casual brewery serving up delicious pub fare perfect for lunch or dinner. Expect a relaxed atmosphere ideal for families, friends, or a casual get-together, with a wide selection of craft beers on tap to complement their hearty dishes. It's a popular spot for a laid-back meal and enjoying local brews, making it a great choice for those seeking a tasty, unpretentious dining experience. Address: 1535 Pearl St. Phone: +13035460886.",
+    "visual_description": "Mountain Sun Pub & Brewery occupies a historic two-story building with a distinctive sage-green upper floor featuring ornate white scrollwork and three vertical windows. The facade is adorned with a purple and yellow sign displaying the brewery's name, and large windows provide views into the interior space. Gray patio umbrellas shade outdoor seating areas to the right of the building, where patrons can enjoy drinks and meals. Behind the main structure, a circular paved area with decorative brick or stone patterns serves as an additional outdoor plaza. The building is part of a vibrant downtown commercial block with a mix of architectural styles, situated on a street lined with other local businesses and street parking.",
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13035460886",
+    "address": "1535 Pearl St",
+    "facebook_id": "21383762515",
+    "entrance_lat": 40.0189982905072,
+    "entrance_lon": -105.27520810234857,
+    "mapillary_ids": [
+      "6148238538594745",
+      "2839862862810777",
+      "184120906900968",
+      "763169657718812",
+      "489255685460065",
+      "293110422258327",
+      "473655887175883",
+      "471089364159567",
+      "951928118681538",
+      "4612438032117109",
+      "762568873544951",
+      "719666810912568",
+      "861189296768069",
+      "3129710173897549"
+    ],
+    "website": "https://www.mountainsunpub.com/",
+    "overture_building_id": "67797069-8ea7-4f97-8280-4ab9392d1bdf",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "14ad9034-0092-4e96-a0e1-7f858bb882fe",
+    "name": "Backcountry",
+    "latitude": 40.019017464289085,
+    "longitude": -105.27514547109607,
+    "description": "Backcountry is an online retailer specializing in **outdoor gear and apparel**, including items like hiking boots, camping equipment, ski gear, and performance clothing.  They cater to **outdoor enthusiasts, from casual hikers to serious adventurers**, offering a vast selection of high-quality products and expert advice.  Backcountry stands out for its **specialized inventory, detailed product information, and focus on durable, performance-driven items** that you won't find in a typical department store. Address: 1537 Pearl St. Phone: +17206504487.",
+    "types": "sporting_goods_store",
+    "embedding_document": "Backcountry, outdoor_gear. Backcountry is an online retailer specializing in **outdoor gear and apparel**, including items like hiking boots, camping equipment, ski gear, and performance clothing.  They cater to **outdoor enthusiasts, from casual hikers to serious adventurers**, offering a vast selection of high-quality products and expert advice.  Backcountry stands out for its **specialized inventory, detailed product information, and focus on durable, performance-driven items** that you won't find in a typical department store. Address: 1537 Pearl St. Phone: +17206504487.",
+    "visual_description": "Backcountry is a retail business located in a historic downtown commercial block, housed within a dark brick building alongside other storefronts on a vibrant urban street. The business is positioned near a \"Mountain Sun\" pub and a secondhand clothing store, with a prominent circular yellow sign displaying its name and a \"Back country\" subtitle. A concrete sidewalk approximately 5-6 feet wide runs along the right side of the building, providing pedestrian access. The surrounding area features a mix of architectural styles, including Victorian-era brick buildings and modern glass storefronts, with street parking available directly in front of the establishment. The location is characterized by a clear, sunny atmosphere with a deep blue sky and distinctive urban streetscape details.",
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+17206504487",
+    "address": "1537 Pearl St",
+    "facebook_id": "112004461983648",
+    "entrance_lat": 40.01901423307942,
+    "entrance_lon": -105.27512639873056,
+    "mapillary_ids": [
+      "719666810912568",
+      "762568873544951",
+      "861189296768069",
+      "3129710173897549",
+      "197339983077745",
+      "6148238538594745",
+      "260197232513845",
+      "489255685460065",
+      "4612438032117109",
+      "763169657718812",
+      "4348278032069078",
+      "2710977819252320"
+    ],
+    "website": "http://www.backcountry.com/",
+    "overture_building_id": "6bf9d300-d51d-428d-b923-519fc0f90351",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "27c97fe2-fe67-48bf-a220-c003369b99dd",
+    "name": "OZO Coffee",
+    "latitude": 40.01897124659724,
+    "longitude": -105.27535066008568,
+    "description": "OZ O Coffee is a coffee shop serving both lunch and dinner, offering a casual dining experience perfect for a quick bite or a relaxed meal. It's a popular spot for students and those seeking a comfortable place to work or meet with friends, making it ideal for a study session or informal gathering. While currently unrated, OZO Coffee provides a convenient option for coffee and a casual meal in a relaxed atmosphere. Address: 1521 Pearl St. Phone: +13034495173.",
+    "types": "coffee_shop",
+    "embedding_document": "OZO Coffee, coffee_shop. OZ O Coffee is a coffee shop serving both lunch and dinner, offering a casual dining experience perfect for a quick bite or a relaxed meal. It's a popular spot for students and those seeking a comfortable place to work or meet with friends, making it ideal for a study session or informal gathering. While currently unrated, OZO Coffee provides a convenient option for coffee and a casual meal in a relaxed atmosphere. Address: 1521 Pearl St. Phone: +13034495173.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13034495173",
+    "address": "1521 Pearl St",
+    "facebook_id": "109657327116698",
+    "entrance_lat": 40.0189707,
+    "entrance_lon": -105.27535,
+    "mapillary_ids": [
+      "1436923000469620",
+      "2839862862810777",
+      "1060907274437784",
+      "1033898720738443",
+      "473655887175883",
+      "503762217467905",
+      "462770708315219",
+      "763169657718812",
+      "293110422258327",
+      "184120906900968",
+      "539867624924832"
+    ],
+    "website": "http://ozocoffee.com",
+    "overture_building_id": "e6ca7522-53d7-4842-a190-287b28b224f6",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "e94987af-d1b9-4b6a-9930-df13f22b90e5",
+    "name": "Barbara & Company",
+    "latitude": 40.0189098,
+    "longitude": -105.2755487,
+    "description": "Barbara & Company is a women's clothing store offering a curated selection of dresses, blouses, pants, and accessories for everyday style.  Locals and shoppers seeking fashionable apparel can find unique pieces and quality fabrics here, differentiating it from general retailers like hardware stores or electronics shops.  We specialize in women's fashion, providing a more focused shopping experience than department stores and catering to those looking for stylish and well-made clothing. Address: 1505 Pearl St. Phone: +13034432565.",
+    "types": "clothing_store",
+    "embedding_document": "Barbara & Company, womens_clothing_store. Barbara & Company is a women's clothing store offering a curated selection of dresses, blouses, pants, and accessories for everyday style.  Locals and shoppers seeking fashionable apparel can find unique pieces and quality fabrics here, differentiating it from general retailers like hardware stores or electronics shops.  We specialize in women's fashion, providing a more focused shopping experience than department stores and catering to those looking for stylish and well-made clothing. Address: 1505 Pearl St. Phone: +13034432565.",
+    "visual_description": "Barbara & Company is a modern boutique located in a multi-story urban building with a distinctive industrial-style storefront featuring dark navy blue steel beams and expansive floor-to-ceiling glass windows. The shop displays clothing and accessories in its windows, with a prominent black hanging sign and white vinyl lettering identifying the business. Behind the storefront, the property includes two circular concrete patio areas with seating and landscaped walkways, creating an inviting outdoor space. The storefront is adorned with a cobalt blue ceramic planter and an A-frame sign promoting fall collections and a customer appreciation sale, while its hours of operation are clearly posted as Monday through Saturday 10am to 6pm and Sunday 11am to 5pm. The building is integrated into a continuous street frontage with a reddish-brown terracotta stone base and a traditional red brick upper facade.",
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13034432565",
+    "address": "1505 Pearl St",
+    "facebook_id": "793520560660600",
+    "entrance_lat": 40.018932108574425,
+    "entrance_lon": -105.27553865828214,
+    "mapillary_ids": [
+      "928978491580216",
+      "542947235171889",
+      "596932048989791",
+      "1271391837442370",
+      "1307354810189651",
+      "1398260804253078",
+      "265442078605521",
+      "505215174002742",
+      "180476393926176",
+      "538616563806271"
+    ],
+    "website": "http://www.barbaraandcompany.net",
+    "overture_building_id": "954cb30c-1eb3-41e2-b7b0-f6640a4c3595",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "92c02a62-c991-4d4f-9825-2ffc6563917c",
+    "name": "Art and Soul Boulder",
+    "latitude": 40.018899,
+    "longitude": -105.2756847,
+    "description": "Art and Soul Boulder is an art gallery offering a diverse collection of contemporary and traditional art exhibitions for art lovers and tourists alike. Visitors can explore rotating exhibits, participate in art programs, and engage with local artists. It's a great destination for families seeking cultural experiences and a unique perspective on creativity, making it a valuable addition to Boulder's cultural scene. Address: 1505 Pearl St. Phone: +13035445803.",
+    "types": "art_gallery",
+    "embedding_document": "Art and Soul Boulder, art_gallery. Art and Soul Boulder is an art gallery offering a diverse collection of contemporary and traditional art exhibitions for art lovers and tourists alike. Visitors can explore rotating exhibits, participate in art programs, and engage with local artists. It's a great destination for families seeking cultural experiences and a unique perspective on creativity, making it a valuable addition to Boulder's cultural scene. Address: 1505 Pearl St. Phone: +13035445803.",
+    "visual_description": "Art and Soul Boulder is a contemporary storefront located in a mixed-use urban development, featuring a brick facade and large glass display windows with prominent signage. The business is situated along a street with electric scooter parking and adjacent to other retail spaces, creating a vibrant commercial environment. Behind the building, curved concrete walkways connect multiple circular plaza areas with integrated outdoor seating, providing gathering spaces for visitors. The property includes landscaped common areas that complement the modern architectural design, with green spaces and seating zones enhancing the overall aesthetic. The surrounding urban landscape features soft afternoon lighting, creating a welcoming atmosphere for customers and pedestrians.",
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13035445803",
+    "address": "1505 Pearl St",
+    "facebook_id": "255624571192104",
+    "entrance_lat": 40.01890157897595,
+    "entrance_lon": -105.27568749115592,
+    "mapillary_ids": [
+      "2264722617304843",
+      "1271391837442370",
+      "542947235171889",
+      "928978491580216",
+      "596932048989791",
+      "608485428004805",
+      "603970064952258",
+      "1239993513936945",
+      "559773429553242",
+      "937565167011188"
+    ],
+    "website": "http://www.artandsoulboulder.com/",
+    "overture_building_id": "954cb30c-1eb3-41e2-b7b0-f6640a4c3595",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "06d5ebd1-0d06-440b-bd4a-5a531ec77e38",
+    "name": "John Allen Woodward",
+    "latitude": 40.0189493,
+    "longitude": -105.2757808,
+    "description": "John Allen Woodward is a specialty luggage store offering a curated selection of high-quality suitcases, backpacks, and travel accessories.  We cater to travelers of all kinds, from everyday commuters to frequent international tourists, providing durable and stylish options.  Unlike general department stores, we specialize exclusively in travel gear, offering expert advice and a wider range of specialized luggage types and features not typically found elsewhere. Address: 1505 Pearl St. Phone: +17206674846.",
+    "types": "specialty_store",
+    "embedding_document": "John Allen Woodward, luggage_store. John Allen Woodward is a specialty luggage store offering a curated selection of high-quality suitcases, backpacks, and travel accessories.  We cater to travelers of all kinds, from everyday commuters to frequent international tourists, providing durable and stylish options.  Unlike general department stores, we specialize exclusively in travel gear, offering expert advice and a wider range of specialized luggage types and features not typically found elsewhere. Address: 1505 Pearl St. Phone: +17206674846.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+17206674846",
+    "address": "1505 Pearl St",
+    "facebook_id": "297404717065998",
+    "entrance_lat": 40.0188835,
+    "entrance_lon": -105.2757758,
+    "mapillary_ids": [
+      "2264722617304843",
+      "1271391837442370",
+      "603970064952258",
+      "559773429553242",
+      "608485428004805",
+      "928978491580216",
+      "542947235171889",
+      "1456882708482841",
+      "596932048989791",
+      "235025475578920"
+    ],
+    "website": "http://johnallenwoodward.com/",
+    "overture_building_id": "954cb30c-1eb3-41e2-b7b0-f6640a4c3595",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "af478fc3-ca2d-4b54-b53c-63ac28a83b0a",
+    "name": "Barker Park",
+    "latitude": 40.0194325,
+    "longitude": -105.2761121,
+    "description": "Barker Park is a vibrant community park offering a wide range of outdoor activities for families, fitness enthusiasts, and everyone in between. Visitors can enjoy open green spaces perfect for picnics and recreation, and the park often hosts community events and programs. While not a museum, Barker Park provides a valuable outdoor experience for those seeking fresh air, exercise, and a connection with nature, making it a great destination for families and those looking for active recreation. Address: 1518 Spruce St. Phone: +13034137200.",
+    "types": "park",
+    "embedding_document": "Barker Park, park. Barker Park is a vibrant community park offering a wide range of outdoor activities for families, fitness enthusiasts, and everyone in between. Visitors can enjoy open green spaces perfect for picnics and recreation, and the park often hosts community events and programs. While not a museum, Barker Park provides a valuable outdoor experience for those seeking fresh air, exercise, and a connection with nature, making it a great destination for families and those looking for active recreation. Address: 1518 Spruce St. Phone: +13034137200.",
+    "visual_description": "Nestled in an institutional area, Barker Park offers a compact urban green space with diverse recreational amenities, including a well-equipped playground and a basketball court surrounded by mature trees. Paved pathways connect the park's various features, creating inviting pedestrian spaces that encourage community interaction and outdoor activities. The park's layout blends green and hardscaped areas, providing visitors with multiple options for relaxation and play within a carefully designed urban landscape.",
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13034137200",
+    "address": "1518 Spruce St",
+    "facebook_id": "174255529262534",
+    "entrance_lat": 40.01916419730915,
+    "entrance_lon": -105.27608452819484,
+    "mapillary_ids": [
+      "3955281871191847",
+      "376608013571141",
+      "464441998178211"
+    ],
+    "website": null,
+    "overture_building_id": "954cb30c-1eb3-41e2-b7b0-f6640a4c3595",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "839489ab-6af2-4849-855c-3b295bb8a7e0",
+    "name": "Boulder Day Nursery",
+    "latitude": 40.019689,
+    "longitude": -105.2757992,
+    "description": "Boulder Day Nursery provides childcare and early childhood education services for families in the Boulder area. We cater to residents seeking a safe, nurturing, and stimulating environment for their children, offering programs from infancy through preschool. Parents and guardians visit us to drop off or pick up their children, ensuring their well-being and development while they work or attend to other responsibilities. Address: 1518 Spruce St. Phone: +13034427605.",
+    "types": "home_service",
+    "embedding_document": "Boulder Day Nursery, home_service. Boulder Day Nursery provides childcare and early childhood education services for families in the Boulder area. We cater to residents seeking a safe, nurturing, and stimulating environment for their children, offering programs from infancy through preschool. Parents and guardians visit us to drop off or pick up their children, ensuring their well-being and development while they work or attend to other responsibilities. Address: 1518 Spruce St. Phone: +13034427605.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13034427605",
+    "address": "1518 Spruce St",
+    "facebook_id": "160252047331367",
+    "entrance_lat": 40.0196517,
+    "entrance_lon": -105.2758475,
+    "mapillary_ids": [],
+    "website": "http://www.boulderdaynursery.org/",
+    "overture_building_id": "bb6ab86f-1a76-4a4d-9a3e-9338fb05e067",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "307d79fe-2363-46c9-941b-f5b7f5726509",
+    "name": "JKA Design",
+    "latitude": 40.0197306,
+    "longitude": -105.2756919,
+    "description": "JKA Design is an architectural design service offering comprehensive planning and design solutions for buildings and spaces. We cater to businesses, developers, and municipalities needing expert architectural expertise for new construction, renovations, and urban planning projects. People visit us to secure design services for commercial buildings, public institutions like libraries, and other projects requiring professional architectural guidance. Address: 1526 Spruce St. Phone: +13034405497.",
+    "types": "architectural_design_service",
+    "embedding_document": "JKA Design, architectural_designer. JKA Design is an architectural design service offering comprehensive planning and design solutions for buildings and spaces. We cater to businesses, developers, and municipalities needing expert architectural expertise for new construction, renovations, and urban planning projects. People visit us to secure design services for commercial buildings, public institutions like libraries, and other projects requiring professional architectural guidance. Address: 1526 Spruce St. Phone: +13034405497.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13034405497",
+    "address": "1526 Spruce St",
+    "facebook_id": "339206581304",
+    "entrance_lat": 40.01969023125423,
+    "entrance_lon": -105.27561736543355,
+    "mapillary_ids": [],
+    "website": "http://www.jkadesign.net/",
+    "overture_building_id": "b64dc737-f797-43fa-98f8-8fffa62c2338",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "36f5bd2f-b959-493d-b37d-83e7201b1cdb",
+    "name": "Law Office of Bartley A Costello",
+    "latitude": 40.0197099,
+    "longitude": -105.2751509,
+    "description": "Law Office of Bartley A Costello is a legal service facility providing a range of legal services to individuals and businesses. People visit them for legal assistance with matters such as civil litigation, criminal defense, family law, and business law.  Whether you're facing a legal challenge, need representation, or seeking guidance on legal issues, they offer support to the general public. Address: 2037 16th St. Phone: +13034427200.",
+    "types": "attorney_or_law_firm",
+    "embedding_document": "Law Office of Bartley A Costello, lawyer. Law Office of Bartley A Costello is a legal service facility providing a range of legal services to individuals and businesses. People visit them for legal assistance with matters such as civil litigation, criminal defense, family law, and business law.  Whether you're facing a legal challenge, need representation, or seeking guidance on legal issues, they offer support to the general public. Address: 2037 16th St. Phone: +13034427200.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13034427200",
+    "address": "2037 16th St",
+    "facebook_id": "363289114052718",
+    "entrance_lat": 40.019639,
+    "entrance_lon": -105.2751894,
+    "mapillary_ids": [],
+    "website": "http://injurylaw.com/contact/",
+    "overture_building_id": "87322f55-be84-4bf4-8582-17d979622abf",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "bff25716-13cc-4b1b-af54-f68dce9d67a8",
+    "name": "Art + Soul Gallery",
+    "latitude": 40.01907,
+    "longitude": -105.27577,
+    "description": "Art + Soul Gallery is a jewelry store specializing in handcrafted jewelry, including necklaces, earrings, bracelets, and rings made with precious metals and gemstones.  We cater to both everyday shoppers looking for beautiful pieces and specialty buyers seeking unique, artisan-crafted items.  Our expertise lies in offering a curated selection of high-quality jewelry, providing personalized service and a range of price points to suit diverse budgets, making it the perfect destination for finding a special treasure. Address: 1505 Pearl St. Phone: 3035445803.",
+    "types": "jewelry_store",
+    "embedding_document": "Art + Soul Gallery, jewelry_store. Art + Soul Gallery is a jewelry store specializing in handcrafted jewelry, including necklaces, earrings, bracelets, and rings made with precious metals and gemstones.  We cater to both everyday shoppers looking for beautiful pieces and specialty buyers seeking unique, artisan-crafted items.  Our expertise lies in offering a curated selection of high-quality jewelry, providing personalized service and a range of price points to suit diverse budgets, making it the perfect destination for finding a special treasure. Address: 1505 Pearl St. Phone: 3035445803.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "3035445803",
+    "address": "1505 Pearl St",
+    "facebook_id": null,
+    "entrance_lat": 40.0188835,
+    "entrance_lon": -105.2757758,
+    "mapillary_ids": [],
+    "website": "https://www.artandsoulboulder.com/",
+    "overture_building_id": "954cb30c-1eb3-41e2-b7b0-f6640a4c3595",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "775f3fb1-86be-44db-813d-e5ca1b6dce10",
+    "name": "The Dragontree",
+    "latitude": 40.019131,
+    "longitude": -105.275378,
+    "description": "The Dragontree is a community hub offering essential services including banking, postal services, and access to public resources like a library with free Wi-Fi. We cater to residents, travelers, and the general public seeking convenient access to everyday needs, from financial transactions and mail handling to legal information and public services. Visit The Dragontree for a one-stop solution to your daily requirements, whether you need to deposit a check, access online resources, or find local assistance. Address: 1521 Pearl St. Phone: +13032191444.",
+    "types": "spa",
+    "embedding_document": "The Dragontree, spas. The Dragontree is a community hub offering essential services including banking, postal services, and access to public resources like a library with free Wi-Fi. We cater to residents, travelers, and the general public seeking convenient access to everyday needs, from financial transactions and mail handling to legal information and public services. Visit The Dragontree for a one-stop solution to your daily requirements, whether you need to deposit a check, access online resources, or find local assistance. Address: 1521 Pearl St. Phone: +13032191444.",
+    "visual_description": "The Dragontree Spa occupies a dark-colored storefront in a vibrant urban commercial district, distinguished by its ornate white signage and prominent tree logo. Located at 1521, the spa is situated alongside other businesses like the Cup Espresso Cafe and Mountain Sun Pub & Brewery, creating a bustling pedestrian-friendly environment with bike racks, street parking, and outdoor seating. The building features large glass windows and is part of a mixed-use neighborhood with modern and historic architectural elements. Pedestrians and cyclists frequently populate the surrounding sidewalk, and the spa appears to be a key part of a dynamic, walkable urban landscape. The property is positioned in a single-story commercial strip development with curved parking areas and easy street access.",
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13032191444",
+    "address": "1521 Pearl St",
+    "facebook_id": "308708693071640",
+    "entrance_lat": 40.01897122516327,
+    "entrance_lon": -105.27534732095765,
+    "mapillary_ids": [
+      "1436923000469620",
+      "806531497555868",
+      "1033898720738443",
+      "1060907274437784",
+      "473655887175883",
+      "462770708315219",
+      "503762217467905",
+      "293110422258327",
+      "184120906900968",
+      "763169657718812",
+      "719666810912568",
+      "3129710173897549"
+    ],
+    "website": "http://thedragontree.com/",
+    "overture_building_id": "e6ca7522-53d7-4842-a190-287b28b224f6",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "bcfda633-5db3-4984-b914-0ef33fb0153b",
+    "name": "Dancing Grains Woodworks",
+    "latitude": 40.019175,
+    "longitude": -105.275067,
+    "description": "Dancing Grains Woodworks is a specialty furniture store offering handcrafted wooden furniture, hardware, and unique home goods.  They cater to DIY enthusiasts and locals seeking high-quality, specialty items not typically found in big-box stores.  With a focus on craftsmanship and a curated selection, Dancing Grains Woodworks provides expertise and a distinctive aesthetic for those looking to elevate their home decor. Address: 1545 Pearl St. Phone: +13039565586.",
+    "types": "specialty_store",
+    "embedding_document": "Dancing Grains Woodworks, furniture_store. Dancing Grains Woodworks is a specialty furniture store offering handcrafted wooden furniture, hardware, and unique home goods.  They cater to DIY enthusiasts and locals seeking high-quality, specialty items not typically found in big-box stores.  With a focus on craftsmanship and a curated selection, Dancing Grains Woodworks provides expertise and a distinctive aesthetic for those looking to elevate their home decor. Address: 1545 Pearl St. Phone: +13039565586.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      }
+    ],
+    "phone": "+13039565586",
+    "address": "1545 Pearl St",
+    "facebook_id": "381745275246129",
+    "entrance_lat": 40.019040317667546,
+    "entrance_lon": -105.27498841726955,
+    "mapillary_ids": [
+      "726969917133299",
+      "1524535085286813",
+      "2624712061261433",
+      "4348278032069078",
+      "896277402983198",
+      "293321092403283",
+      "517721816054260"
+    ],
+    "website": "http://www.dancinggrains.com/",
+    "overture_building_id": "f61c4184-d69c-4fc7-b873-1d42d8b69c8e",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "bb2efb2f-2c82-45c8-86c3-39b5c53ee4f9",
+    "name": "Suti and Co",
+    "latitude": 40.0196109,
+    "longitude": -105.2751233,
+    "description": "Suti and Co is a cozy cafe serving breakfast and lunch, perfect for a casual bite.  It's a popular spot for students and those looking for a relaxed atmosphere to work or meet friends, offering delicious coffee and light meals.  Think comfortable seating and a welcoming vibe \u2013 a great alternative to fast food for a satisfying and affordable meal. Address: 2031 16th St. Phone: +13037289123.",
+    "types": "cafe",
+    "embedding_document": "Suti and Co, cafe. Suti and Co is a cozy cafe serving breakfast and lunch, perfect for a casual bite.  It's a popular spot for students and those looking for a relaxed atmosphere to work or meet friends, offering delicious coffee and light meals.  Think comfortable seating and a welcoming vibe \u2013 a great alternative to fast food for a satisfying and affordable meal. Address: 2031 16th St. Phone: +13037289123.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+13037289123",
+    "address": "2031 16th St",
+    "facebook_id": "109407938611088",
+    "entrance_lat": 40.0195936,
+    "entrance_lon": -105.2751756,
+    "mapillary_ids": [],
+    "website": "https://www.sutiandco.com/",
+    "overture_building_id": "87322f55-be84-4bf4-8582-17d979622abf",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "e10179f1-ac3d-4f23-b9fe-0da18abc947b",
+    "name": "Village Green Society",
+    "latitude": 40.019852,
+    "longitude": -105.275063,
+    "description": "Village Green Society is a cannabis dispensary offering a curated selection of cannabis flower, concentrates, edibles, topicals, and accessories.  It caters to both everyday cannabis consumers and those seeking premium, specialized products, providing expert guidance and a wide variety of strains and product types not typically found in standard retail stores.  Whether you're a local or tourist, Village Green Society is a destination for quality cannabis products and a knowledgeable shopping experience. Address: 2043 16th St. Phone: 7203895726.",
+    "types": "specialty_store",
+    "embedding_document": "Village Green Society, cannabis_dispensary. Village Green Society is a cannabis dispensary offering a curated selection of cannabis flower, concentrates, edibles, topicals, and accessories.  It caters to both everyday cannabis consumers and those seeking premium, specialized products, providing expert guidance and a wide variety of strains and product types not typically found in standard retail stores.  Whether you're a local or tourist, Village Green Society is a destination for quality cannabis products and a knowledgeable shopping experience. Address: 2043 16th St. Phone: 7203895726.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      }
+    ],
+    "phone": "7203895726",
+    "address": "2043 16th St",
+    "facebook_id": null,
+    "entrance_lat": 40.01977771369827,
+    "entrance_lon": -105.27528434155667,
+    "mapillary_ids": [],
+    "website": "http://www.cannamart.com/",
+    "overture_building_id": "78f21e0e-2859-4e6c-b5a6-8be6abd53b80",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  },
+  {
+    "id": "692d163e-efe0-4be3-96f0-2a39facaf0ca",
+    "name": "LibertyX Bitcoin ATM",
+    "latitude": 40.0197975,
+    "longitude": -105.2751807,
+    "description": "The LibertyX Bitcoin ATM allows users to buy and sell Bitcoin using cash. It caters to the general public, including those interested in cryptocurrency, and is frequently visited by individuals looking to quickly exchange fiat currency for Bitcoin or vice versa. People might use it for various reasons, from personal investment and transactions to accessing a decentralized financial system. Address: 2043 16th St. Phone: +18005118940.",
+    "types": "atm",
+    "embedding_document": "LibertyX Bitcoin ATM, atms. The LibertyX Bitcoin ATM allows users to buy and sell Bitcoin using cash. It caters to the general public, including those interested in cryptocurrency, and is frequently visited by individuals looking to quickly exchange fiat currency for Bitcoin or vice versa. People might use it for various reasons, from personal investment and transactions to accessing a decentralized financial system. Address: 2043 16th St. Phone: +18005118940.",
+    "visual_description": null,
+    "enclosing_roads": [
+      {
+        "name": "Spruce Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "16th Street",
+        "road_class": "residential"
+      },
+      {
+        "name": "Pearl Street",
+        "road_class": "tertiary"
+      },
+      {
+        "name": "15th Street",
+        "road_class": "tertiary"
+      }
+    ],
+    "phone": "+18005118940",
+    "address": "2043 16th St",
+    "facebook_id": "106899401887317",
+    "entrance_lat": 40.019729,
+    "entrance_lon": -105.2752539,
+    "mapillary_ids": [],
+    "website": "https://libertyx.com/a/buy-bitcoin/locations/CO/boulder/2043-16th-st?y_source=1_MjkzODEwMjQtNTU5LWxvY2F0aW9uLndlYnNpdGU%3D",
+    "overture_building_id": "6c30df94-a81e-4f61-b05c-f5087093cdce",
+    "created_at": 0,
+    "rating": 0.0,
+    "metadata": null
+  }
+]

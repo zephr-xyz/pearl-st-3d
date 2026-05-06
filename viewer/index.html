@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pearl St 3D — Procedural Building Rendering POC</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; overflow: hidden; }
+#canvas { width: 100vw; height: 100vh; display: block; }
+
+#panel {
+  position: absolute; top: 20px; left: 20px; z-index: 10;
+  background: rgba(255,255,255,0.97); border-radius: 14px; padding: 20px;
+  max-width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  backdrop-filter: blur(20px);
+}
+#panel h1 { font-size: 17px; font-weight: 600; margin-bottom: 4px; letter-spacing: -0.3px; }
+#panel .subtitle { font-size: 12px; color: #6b7280; margin-bottom: 14px; }
+#panel .stat-row { display: flex; gap: 12px; margin: 10px 0; }
+#panel .stat { text-align: center; flex: 1; }
+#panel .stat-num { font-size: 22px; font-weight: 700; color: #4f46e5; }
+#panel .stat-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.legend { margin-top: 12px; border-top: 1px solid #f3f4f6; padding-top: 10px; }
+.legend-item { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 11px; color: #4b5563; }
+.legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+#controls {
+  position: absolute; top: 20px; right: 20px; z-index: 10;
+  background: rgba(255,255,255,0.97); border-radius: 14px; padding: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15); backdrop-filter: blur(20px);
+}
+#controls button {
+  display: block; width: 100%; padding: 9px 14px; margin: 3px 0;
+  border: none; border-radius: 8px; background: #f9fafb;
+  cursor: pointer; font-size: 12px; text-align: left;
+  font-weight: 500; color: #374151; transition: all 0.15s;
+}
+#controls button:hover { background: #eef2ff; }
+#controls button.active { background: #4f46e5; color: #fff; }
+#controls .section-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 0 4px; }
+
+#tooltip {
+  position: absolute; z-index: 20; background: rgba(15,23,42,0.92);
+  color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 12px;
+  pointer-events: none; display: none; max-width: 320px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3); backdrop-filter: blur(8px);
+  line-height: 1.5;
+}
+#tooltip strong { color: #a5b4fc; }
+#tooltip .tag {
+  display: inline-block; padding: 2px 6px; border-radius: 4px;
+  font-size: 10px; font-weight: 600; margin-top: 4px;
+}
+#tooltip .tag-direct { background: #059669; color: #fff; }
+#tooltip .tag-transfer { background: #d97706; color: #fff; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1>Procedural 3D Buildings</h1>
+  <div class="subtitle">Pearl Street Mall, Boulder CO — 13th to 17th</div>
+  <div class="stat-row">
+    <div class="stat"><div class="stat-num">275</div><div class="stat-label">Buildings</div></div>
+    <div class="stat"><div class="stat-num">1409</div><div class="stat-label">Facades</div></div>
+    <div class="stat"><div class="stat-num">201</div><div class="stat-label">Trees</div></div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background: linear-gradient(135deg, #8B4513, #6b8e6b)"></div> Procedural facade (VLM-informed)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background: #cc2222"></div> 3D awnings from visual descriptions</div>
+    <div class="legend-item"><div class="legend-swatch" style="background: #3a7a3a"></div> OSM trees + Overture infrastructure</div>
+  </div>
+</div>
+
+<div id="controls">
+  <div class="section-label">Render Mode</div>
+  <button id="btn-textured" class="active">Photo Textures + Transfer</button>
+  <button id="btn-color">Visual Description Colors</button>
+  <button id="btn-wireframe">Wireframe Only</button>
+  <div class="section-label" style="margin-top: 12px">Camera</div>
+  <button id="btn-street">Street Level</button>
+  <button id="btn-birds">Bird's Eye</button>
+  <button id="btn-orbit">Orbit (default)</button>
+</div>
+
+<div id="tooltip"></div>
+<canvas id="canvas"></canvas>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const canvas = document.getElementById('canvas');
+const tooltip = document.getElementById('tooltip');
+const textureLoader = new THREE.TextureLoader();
+
+// Scene setup
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xe8ecf0, 150, 500);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 1000);
+camera.position.set(80, 60, 120);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.6;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 4, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxPolarAngle = Math.PI / 2.05;
+controls.minDistance = 5;
+controls.maxDistance = 400;
+
+// Lighting — bright midday, minimal shadows
+const ambient = new THREE.HemisphereLight(0xffffff, 0xb0c4de, 0.7);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+sun.position.set(30, 80, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.camera.left = -200;
+sun.shadow.camera.right = 200;
+sun.shadow.camera.top = 200;
+sun.shadow.camera.bottom = -200;
+sun.shadow.bias = -0.0001;
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0xddeeff, 0.6);
+fill.position.set(-30, 20, -20);
+scene.add(fill);
+
+const back = new THREE.DirectionalLight(0xffeedd, 0.3);
+back.position.set(-10, 30, -40);
+scene.add(back);
+
+// Ground plane
+const groundGeom = new THREE.PlaneGeometry(600, 600);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0xc8bfb0, roughness: 0.85, metalness: 0,
+  polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4
+});
+const ground = new THREE.Mesh(groundGeom, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.05;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Sky gradient via background
+scene.background = new THREE.Color(0xe8ecf0);
+
+// Load scene data
+const resp = await fetch('scene.json');
+const data = await resp.json();
+
+// Texture cache
+const textures = {};
+function loadTexture(path) {
+  if (!textures[path]) {
+    textures[path] = textureLoader.load(path);
+    textures[path].colorSpace = THREE.SRGBColorSpace;
+  }
+  return textures[path];
+}
+
+function hexToColor(hex) {
+  return new THREE.Color(hex);
+}
+
+// Procedural window texture
+function createProceduralFacade(style, wall) {
+  const width = wall.length;
+  const height = wall.height;
+  const entrances = wall.entrances || [];
+
+  const W = 640;
+  const H = Math.round(W * (height / Math.max(width, 1)));
+  const canvas2d = document.createElement('canvas');
+  canvas2d.width = W;
+  canvas2d.height = H;
+  const ctx = canvas2d.getContext('2d');
+
+  const stories = style.stories || 2;
+  const floorH = H / stories;
+
+  // Compute exclusion zones around entrances (used throughout)
+  const pxPerMeter = W / width;
+  const doorW = 0.9 * pxPerMeter;
+  const exclusionRadius = doorW * 2.0;
+  function inEntranceZone(px) {
+    for (const ent of entrances) {
+      if (Math.abs(px - ent.t * W) < exclusionRadius) return true;
+    }
+    return false;
+  }
+
+  // === BASE WALL ===
+  ctx.fillStyle = style.color || '#8B7355';
+  ctx.fillRect(0, 0, W, H);
+
+  // Material texture
+  if (style.material && style.material.includes('brick')) {
+    const brickH = 5, brickW = 16;
+    ctx.globalAlpha = 0.05;
+    for (let y = 0; y < H; y += brickH + 1.5) {
+      const rowOff = (Math.floor(y / (brickH + 1.5)) % 2) * (brickW / 2);
+      for (let x = -brickW; x < W + brickW; x += brickW + 1.5) {
+        ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
+        ctx.fillRect(x + rowOff, y, brickW, brickH);
+      }
+    }
+    ctx.globalAlpha = 1.0;
+  } else if (style.material === 'stucco' || style.material === 'painted_brick' || style.material === 'siding') {
+    ctx.globalAlpha = 0.03;
+    for (let i = 0; i < 300; i++) {
+      ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
+      ctx.fillRect(Math.random() * W, Math.random() * H, Math.random() * 4 + 1, Math.random() * 4 + 1);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  // === CORNICE ===
+  const corniceH = Math.max(8, H * 0.035);
+  ctx.fillStyle = style.accent || '#d4c5a9';
+  ctx.fillRect(0, 0, W, corniceH);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(0, corniceH, W, 2);
+
+  // Pediment (Odd Fellows)
+  if (style.pediment) {
+    ctx.fillStyle = style.accent || '#f5f0e0';
+    ctx.beginPath();
+    ctx.moveTo(W * 0.3, corniceH);
+    ctx.lineTo(W * 0.5, corniceH - H * 0.04);
+    ctx.lineTo(W * 0.7, corniceH);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // === FLOOR DIVIDERS ===
+  for (let f = 1; f < stories; f++) {
+    const ly = f * floorH;
+    ctx.fillStyle = style.accent || '#d4c5a9';
+    ctx.fillRect(0, ly - 1, W, 3);
+  }
+
+  // === SIGNAGE BAND (between cornice and first window row, or above ground floor) ===
+  const signage = style.signage;
+  if (signage && stories >= 1) {
+    const bandY = stories === 1 ? corniceH + 4 : (stories - 1) * floorH + 4;
+    const bandH = floorH * 0.18;
+    ctx.fillStyle = signage.band_color || '#2a2a2a';
+    ctx.fillRect(0, bandY, W, bandH);
+    // Signage text placeholder (light rectangle)
+    ctx.fillStyle = signage.color || '#ffffff';
+    ctx.globalAlpha = 0.8;
+    const textW = W * 0.35;
+    ctx.fillRect(W/2 - textW/2, bandY + bandH * 0.2, textW, bandH * 0.6);
+    ctx.globalAlpha = 1.0;
+  }
+
+  // === UPPER FLOOR WINDOWS ===
+  if (stories > 1) {
+    const winsPerFloor = style.windows === 'vertical_triple' ? 3 : Math.max(2, Math.round(width / 3.2));
+    const winSpacing = W / (winsPerFloor + 0.6);
+    const winW = winSpacing * 0.45;
+    const winH = floorH * 0.52;
+
+    for (let floor = 0; floor < stories - 1; floor++) {
+      const floorTop = floor * floorH + corniceH;
+      const winTop = floorTop + (floorH - winH) * 0.45;
+
+      for (let wi = 0; wi < winsPerFloor; wi++) {
+        const winCx = (wi + 0.8) * winSpacing;
+
+        // Arched top for romanesque
+        if (style.windows === 'romanesque_arched') {
+          ctx.fillStyle = style.accent || '#f5f0e0';
+          ctx.beginPath();
+          ctx.arc(winCx, winTop, winW/2 + 3, Math.PI, 0);
+          ctx.fill();
+        }
+
+        // Sill
+        ctx.fillStyle = style.accent || '#e0d8c8';
+        ctx.fillRect(winCx - winW/2 - 3, winTop + winH, winW + 6, 4);
+
+        // Lintel
+        ctx.fillStyle = style.accent || '#e0d8c8';
+        ctx.fillRect(winCx - winW/2 - 2, winTop - 4, winW + 4, 4);
+
+        // Frame
+        ctx.fillStyle = style.accent || '#f5f0e0';
+        ctx.fillRect(winCx - winW/2 - 1.5, winTop, winW + 3, winH);
+
+        // Glass
+        const g = ctx.createLinearGradient(winCx, winTop, winCx, winTop + winH);
+        g.addColorStop(0, '#2a4a70');
+        g.addColorStop(0.5, '#3a6090');
+        g.addColorStop(1, '#25405f');
+        ctx.fillStyle = g;
+        ctx.fillRect(winCx - winW/2, winTop + 1, winW, winH - 2);
+
+        // Mullion
+        ctx.fillStyle = style.accent || '#e0d8c8';
+        ctx.fillRect(winCx - 0.8, winTop + 1, 1.6, winH - 2);
+
+        // Reflection
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = '#90c0ee';
+        ctx.fillRect(winCx - winW/3, winTop + 4, winW/4, winH * 0.45);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+  }
+
+  // === GROUND FLOOR ===
+  const gfTop = (stories - 1) * floorH + (signage ? floorH * 0.22 : corniceH + 2);
+  const gfBottom = H - 4;
+  const gfH = gfBottom - gfTop;
+  const groundType = style.ground_floor || 'storefront';
+
+  // --- Entrance doors ---
+  const doorH = gfH * 0.85;
+  const doorTop = gfBottom - doorH;
+
+  for (const ent of entrances) {
+    const cx = ent.t * W;
+
+    // Recess shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(cx - doorW/2 - 4, doorTop - 4, doorW + 8, doorH + 5);
+
+    // Frame
+    ctx.fillStyle = style.accent || '#3a3a3a';
+    ctx.fillRect(cx - doorW/2 - 2, doorTop - 2, doorW + 4, doorH + 3);
+
+    // Door glass
+    const dg = ctx.createLinearGradient(cx - doorW/2, doorTop, cx + doorW/2, doorTop + doorH);
+    dg.addColorStop(0, '#2a3d55');
+    dg.addColorStop(0.4, '#3a5a78');
+    dg.addColorStop(1, '#223548');
+    ctx.fillStyle = dg;
+    ctx.fillRect(cx - doorW/2, doorTop, doorW, doorH);
+
+    // Handle
+    ctx.fillStyle = '#c8a850';
+    ctx.fillRect(cx + doorW * 0.25, doorTop + doorH * 0.42, 2.5, doorH * 0.14);
+
+    // Transom bar
+    ctx.fillStyle = style.accent || '#3a3a3a';
+    ctx.fillRect(cx - doorW/2, doorTop + doorH * 0.12, doorW, 2);
+  }
+
+  // --- Storefront glass or traditional windows ---
+  if (groundType === 'full_glass' || groundType === 'storefront') {
+    const glassTop = doorTop + (groundType === 'full_glass' ? 0 : gfH * 0.08);
+    const glassH = groundType === 'full_glass' ? doorH : gfH * 0.7;
+    const glassBottom = glassTop + glassH;
+
+    // Divide into panes, skip entrance zones
+    const numPanes = Math.max(2, Math.round(width / 3.5));
+    const paneSpacing = W / numPanes;
+    const paneW = paneSpacing * 0.82;
+
+    for (let p = 0; p < numPanes; p++) {
+      const cx = (p + 0.5) * paneSpacing;
+      if (inEntranceZone(cx)) continue;
+
+      // Bulkhead below
+      if (groundType === 'storefront') {
+        ctx.fillStyle = style.accent || '#2a2a2a';
+        ctx.fillRect(cx - paneW/2, glassBottom, paneW, gfBottom - glassBottom - 2);
+      }
+
+      // Frame
+      ctx.fillStyle = style.accent || '#2a2a2a';
+      ctx.fillRect(cx - paneW/2 - 2, glassTop - 2, paneW + 4, glassH + 4);
+
+      // Glass
+      const sg = ctx.createLinearGradient(cx - paneW/2, glassTop, cx + paneW/2, glassBottom);
+      sg.addColorStop(0, '#1a3050');
+      sg.addColorStop(0.3, '#254565');
+      sg.addColorStop(0.7, '#1d3855');
+      sg.addColorStop(1, '#152d45');
+      ctx.fillStyle = sg;
+      ctx.fillRect(cx - paneW/2, glassTop, paneW, glassH);
+
+      // Reflection
+      ctx.globalAlpha = 0.1;
+      ctx.fillStyle = '#88bbdd';
+      ctx.fillRect(cx - paneW/3, glassTop + 4, paneW/4, glassH * 0.6);
+      ctx.globalAlpha = 1.0;
+    }
+  } else {
+    // Traditional smaller windows
+    const numWins = Math.max(1, Math.round(width / 4.5));
+    const spacing = W / (numWins + 0.5);
+    const gWinW = spacing * 0.4;
+    const gWinH = gfH * 0.5;
+    const gWinTop = gfTop + gfH * 0.2;
+
+    for (let wi = 0; wi < numWins; wi++) {
+      const cx = (wi + 0.75) * spacing;
+      if (inEntranceZone(cx)) continue;
+
+      ctx.fillStyle = style.accent || '#e0d8c8';
+      ctx.fillRect(cx - gWinW/2 - 2, gWinTop - 2, gWinW + 4, gWinH + 4);
+      const wg = ctx.createLinearGradient(cx, gWinTop, cx, gWinTop + gWinH);
+      wg.addColorStop(0, '#2a4565');
+      wg.addColorStop(1, '#1f3550');
+      ctx.fillStyle = wg;
+      ctx.fillRect(cx - gWinW/2, gWinTop, gWinW, gWinH);
+      ctx.fillStyle = style.accent || '#e0d8c8';
+      ctx.fillRect(cx - 0.8, gWinTop, 1.6, gWinH);
+    }
+  }
+
+  // === AWNING ===
+  const awning = style.awning;
+  if (awning && entrances.length > 0) {
+    const awningH = gfH * 0.18;
+    const awningTop = doorTop - awningH - 4;
+    const awningStyle = awning.style || 'flat';
+
+    for (const ent of entrances) {
+      const cx = ent.t * W;
+      const aw = Math.min(exclusionRadius * 1.6, W * 0.45);
+
+      if (awningStyle === 'slope') {
+        // Sloped awning (like OZO's red one)
+        ctx.fillStyle = awning.color;
+        ctx.beginPath();
+        ctx.moveTo(cx - aw/2, awningTop);
+        ctx.lineTo(cx + aw/2, awningTop);
+        ctx.lineTo(cx + aw/2 - 4, awningTop + awningH);
+        ctx.lineTo(cx - aw/2 + 4, awningTop + awningH);
+        ctx.closePath();
+        ctx.fill();
+        // Shadow below
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.fillRect(cx - aw/2 + 4, awningTop + awningH, aw - 8, 3);
+        // Highlight on top edge
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(cx - aw/2, awningTop, aw, 2);
+      } else {
+        // Flat awning
+        ctx.fillStyle = awning.color;
+        ctx.fillRect(cx - aw/2, awningTop, aw, awningH);
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(cx - aw/2, awningTop + awningH - 2, aw, 3);
+      }
+    }
+  } else if (awning && entrances.length === 0) {
+    // Full-width awning when no specific entrance on this wall
+    const awningH = gfH * 0.15;
+    const awningTop = gfTop - awningH;
+    ctx.fillStyle = awning.color;
+    ctx.fillRect(W * 0.05, awningTop, W * 0.9, awningH);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(W * 0.05, awningTop + awningH - 2, W * 0.9, 3);
+  }
+
+  // === BASE/PLINTH ===
+  ctx.fillStyle = 'rgba(0,0,0,0.1)';
+  ctx.fillRect(0, H - 3, W, 3);
+
+  const tex = new THREE.CanvasTexture(canvas2d);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+let buildingGroups = [];
+let currentMode = 'textured';
+
+function createBuilding(bld, mode) {
+  const group = new THREE.Group();
+  group.userData = bld;
+
+  const style = bld.style || {};
+
+  for (const wall of bld.walls) {
+    const positions = new Float32Array(wall.vertices.flat());
+    const uvs = new Float32Array(wall.uvs.flat());
+
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geom.computeVertexNormals();
+
+    let material;
+
+    if (mode === 'wireframe') {
+      material = new THREE.MeshBasicMaterial({
+        color: wall.is_exterior ? 0x4f46e5 : 0x9ca3af,
+        wireframe: true, opacity: wall.is_exterior ? 0.6 : 0.3, transparent: true,
+        side: THREE.DoubleSide
+      });
+    } else if (!wall.is_exterior) {
+      material = new THREE.MeshStandardMaterial({
+        color: 0x4a4a4a, roughness: 0.95, metalness: 0,
+        side: THREE.DoubleSide
+      });
+    } else if (mode === 'textured' || mode === 'color') {
+      const facadeTex = createProceduralFacade(style, wall);
+      material = new THREE.MeshStandardMaterial({
+        map: facadeTex, roughness: 0.8, metalness: 0.01,
+        side: THREE.DoubleSide
+      });
+      if (!bld.has_mapillary && mode === 'textured') {
+        material.color = new THREE.Color(0.92, 0.92, 0.92);
+      }
+    }
+
+    const mesh = new THREE.Mesh(geom, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  }
+
+  // 3D Awnings
+  if (mode !== 'wireframe' && style.awning) {
+    const awningColor = new THREE.Color(style.awning.color);
+    const awningDepth = 1.8;
+    const awningDroop = 0.4;
+
+    for (const wall of bld.walls) {
+      if (!wall.is_exterior) continue;
+      const ents = wall.entrances || [];
+      if (ents.length === 0 && wall.length < 4) continue;
+
+      const v = wall.vertices;
+      const x0 = v[0][0], z0 = v[0][2], x1 = v[1][0], z1 = v[1][2];
+      const h = wall.height;
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.sqrt(dx*dx + dz*dz);
+      if (len < 2) continue;
+
+      // Normal direction (outward)
+      const nx = -dz / len, nz = dx / len;
+      const awningTop = h * 0.55;
+      const awningBot = awningTop - awningDroop;
+
+      // Place awning per entrance, or full-width if none
+      const spans = ents.length > 0
+        ? ents.map(e => [Math.max(0.05, e.t - 0.2), Math.min(0.95, e.t + 0.2)])
+        : [[0.08, 0.92]];
+
+      for (const [tStart, tEnd] of spans) {
+        const ax0 = x0 + tStart * dx, az0 = z0 + tStart * dz;
+        const ax1 = x0 + tEnd * dx, az1 = z0 + tEnd * dz;
+        const bx0 = ax0 + nx * awningDepth, bz0 = az0 + nz * awningDepth;
+        const bx1 = ax1 + nx * awningDepth, bz1 = az1 + nz * awningDepth;
+
+        const awningVerts = new Float32Array([
+          ax0, awningTop, az0, ax1, awningTop, az1, bx1, awningBot, bz1,
+          ax0, awningTop, az0, bx1, awningBot, bz1, bx0, awningBot, bz0
+        ]);
+        const awningGeom = new THREE.BufferGeometry();
+        awningGeom.setAttribute('position', new THREE.BufferAttribute(awningVerts, 3));
+        awningGeom.computeVertexNormals();
+        const awningMat = new THREE.MeshStandardMaterial({
+          color: awningColor, roughness: 0.6, metalness: 0, side: THREE.DoubleSide
+        });
+        const awningMesh = new THREE.Mesh(awningGeom, awningMat);
+        awningMesh.castShadow = true;
+        group.add(awningMesh);
+      }
+    }
+  }
+
+  // Roof — procedural with NAIP-derived features
+  const roofPositions = [];
+  for (const tri of bld.roof) {
+    for (const v of tri) roofPositions.push(v[0], v[1], v[2]);
+  }
+  const roofGeom = new THREE.BufferGeometry();
+  roofGeom.setAttribute('position', new THREE.Float32BufferAttribute(roofPositions, 3));
+  roofGeom.computeVertexNormals();
+
+  let roofMat;
+  if (mode === 'wireframe') {
+    roofMat = new THREE.MeshBasicMaterial({
+      color: bld.has_mapillary ? 0x4f46e5 : 0xd97706,
+      wireframe: true, opacity: 0.6, transparent: true,
+      side: THREE.DoubleSide
+    });
+  } else {
+    roofMat = new THREE.MeshStandardMaterial({
+      color: bld.roof_color || '#6b7280',
+      roughness: 0.85, metalness: 0.05,
+      side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
+    });
+  }
+  const roofMesh = new THREE.Mesh(roofGeom, roofMat);
+  roofMesh.castShadow = true;
+  roofMesh.receiveShadow = true;
+  group.add(roofMesh);
+
+  // Roof equipment from NAIP analysis — aligned to building's longest edge
+  if (mode !== 'wireframe' && bld.roof_features) {
+    const fp = bld.footprint_m;
+    const h = bld.height;
+    const cx = bld.centroid_m[0], cy = bld.centroid_m[1];
+
+    // Point-in-polygon test (2D, x/z plane)
+    function insideFootprint(px, pz) {
+      let inside = false;
+      for (let i = 0, j = fp.length - 1; i < fp.length; j = i++) {
+        const xi = fp[i][0], zi = fp[i][1];
+        const xj = fp[j][0], zj = fp[j][1];
+        if ((zi > pz) !== (zj > pz) && (px < (xj - xi) * (pz - zi) / (zj - zi) + xi)) {
+          inside = !inside;
+        }
+      }
+      return inside;
+    }
+
+    // Find longest edge to determine building orientation
+    let longestLen = 0, buildingAngle = 0;
+    for (let i = 0; i < fp.length; i++) {
+      const j = (i + 1) % fp.length;
+      const dx = fp[j][0] - fp[i][0], dz = fp[j][1] - fp[i][1];
+      const len = Math.sqrt(dx*dx + dz*dz);
+      if (len > longestLen) {
+        longestLen = len;
+        buildingAngle = Math.atan2(dz, dx);
+      }
+    }
+
+    // Local axes aligned to building
+    const axX = Math.cos(buildingAngle), axZ = Math.sin(buildingAngle);
+    const ayX = -Math.sin(buildingAngle), ayZ = Math.cos(buildingAngle);
+
+    // Project footprint onto local axes to get oriented extents
+    let localMinX = Infinity, localMaxX = -Infinity;
+    let localMinY = Infinity, localMaxY = -Infinity;
+    for (const p of fp) {
+      const dx = p[0] - cx, dz = p[1] - cy;
+      const lx = dx * axX + dz * axZ;
+      const ly = dx * ayX + dz * ayZ;
+      localMinX = Math.min(localMinX, lx); localMaxX = Math.max(localMaxX, lx);
+      localMinY = Math.min(localMinY, ly); localMaxY = Math.max(localMaxY, ly);
+    }
+    const fW = localMaxX - localMinX, fH = localMaxY - localMinY;
+
+    // Helper: local coords to world
+    function toWorld(lx, ly) {
+      return [cx + lx * axX + ly * ayX, cy + lx * axZ + ly * ayZ];
+    }
+
+    for (const feat of bld.roof_features) {
+      if (feat.type === 'solar_panels') {
+        const panelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.3, metalness: 0.4 });
+        const panelW = 1.6, panelH = 1.0;
+        const cols = Math.max(2, Math.round(Math.sqrt(feat.coverage * fW * fH / (panelW * panelH))));
+        const rows = Math.max(1, Math.round(cols * 0.6));
+        const spacingX = fW * 0.55 / Math.max(1, cols - 1);
+        const spacingY = fH * 0.35 / Math.max(1, rows - 1);
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const lx = -fW * 0.275 + c * spacingX;
+            const ly = -fH * 0.175 + r * spacingY;
+            const [wx, wz] = toWorld(lx, ly);
+            if (!insideFootprint(wx, wz)) continue;
+            const panel = new THREE.Mesh(new THREE.BoxGeometry(panelW, 0.08, panelH), panelMat);
+            panel.position.set(wx, h + 0.15, wz);
+            panel.rotation.y = -buildingAngle;
+            panel.castShadow = true;
+            group.add(panel);
+          }
+        }
+      }
+
+      if (feat.type === 'hvac_units') {
+        const hvacMat = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, roughness: 0.6, metalness: 0.3 });
+        const count = Math.max(1, Math.round(feat.coverage * 5));
+        const gridCols = Math.ceil(Math.sqrt(count));
+        const gridRows = Math.ceil(count / gridCols);
+        let placed = 0;
+        for (let r = 0; r < gridRows && placed < count; r++) {
+          for (let c = 0; c < gridCols && placed < count; c++) {
+            const lx = (c / (gridCols + 1) - 0.5) * fW * 0.5 + fW * 0.1;
+            const ly = (r / (gridRows + 1) - 0.5) * fH * 0.5;
+            const [wx, wz] = toWorld(lx, ly);
+            if (!insideFootprint(wx, wz)) { placed++; continue; }
+            const size = 0.9 + placed * 0.1 % 0.5;
+            const unitH = 0.5 + placed * 0.07 % 0.3;
+            const unit = new THREE.Mesh(new THREE.BoxGeometry(size, unitH, size * 0.8), hvacMat);
+            unit.position.set(wx, h + unitH / 2, wz);
+            unit.rotation.y = -buildingAngle;
+            unit.castShadow = true;
+            group.add(unit);
+            placed++;
+          }
+        }
+      }
+
+      if (feat.type === 'vegetation') {
+        const vegMat = new THREE.MeshStandardMaterial({ color: 0x4a8a4a, roughness: 0.9 });
+        const count = Math.max(2, Math.round(feat.coverage * 8));
+        for (let i = 0; i < count; i++) {
+          const lx = (i / count - 0.5) * fW * 0.4;
+          const ly = ((i * 0.618) % 1 - 0.5) * fH * 0.4;
+          const [wx, wz] = toWorld(lx, ly);
+          if (!insideFootprint(wx, wz)) continue;
+          const veg = new THREE.Mesh(new THREE.SphereGeometry(0.5 + (i % 3) * 0.15, 6, 4), vegMat);
+          veg.position.set(wx, h + 0.2, wz);
+          veg.scale.y = 0.3;
+          group.add(veg);
+        }
+      }
+
+      if (feat.type === 'light_membrane') {
+        const parapetMat = new THREE.MeshStandardMaterial({ color: 0x888880, roughness: 0.8 });
+        const parapetH = 0.3;
+        for (let i = 0; i < fp.length; i++) {
+          const j = (i + 1) % fp.length;
+          const x0 = fp[i][0], z0 = fp[i][1];
+          const x1 = fp[j][0], z1 = fp[j][1];
+          const len = Math.sqrt((x1-x0)**2 + (z1-z0)**2);
+          if (len < 1) continue;
+          const midX = (x0+x1)/2, midZ = (z0+z1)/2;
+          const parapet = new THREE.Mesh(new THREE.BoxGeometry(len, parapetH, 0.15), parapetMat);
+          parapet.position.set(midX, h + parapetH/2, midZ);
+          parapet.rotation.y = -Math.atan2(z1-z0, x1-x0);
+          group.add(parapet);
+        }
+      }
+    }
+  }
+
+  return group;
+}
+
+function rebuildScene(mode) {
+  for (const g of buildingGroups) scene.remove(g);
+  buildingGroups = [];
+
+  for (const bld of data.buildings) {
+    const mesh = createBuilding(bld, mode);
+    scene.add(mesh);
+    buildingGroups.push(mesh);
+  }
+}
+
+rebuildScene('textured');
+
+// Roads — rendered as flat quads
+const roadColors = { tertiary: 0x4a4a4a, residential: 0x5a5a5a, footway: 0xd4c4a8, pedestrian: 0xddd0b8, service: 0x6a6a6a };
+for (const road of (data.roads || [])) {
+  if (road.points.length < 2) continue;
+  const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 1.5 : 2.5) / 2;
+  const color = roadColors[road.class] || 0x888888;
+  const y = road.class === 'footway' || road.class === 'pedestrian' ? 0.04 : 0.02;
+
+  const verts = [];
+  for (let i = 0; i < road.points.length - 1; i++) {
+    const [x0, z0] = road.points[i];
+    const [x1, z1] = road.points[i + 1];
+    const dx = x1 - x0, dz = z1 - z0;
+    const len = Math.sqrt(dx*dx + dz*dz);
+    if (len < 0.3) continue;
+    const nx = -dz / len * hw, nz = dx / len * hw;
+
+    verts.push(
+      x0 + nx, y, z0 + nz, x1 + nx, y, z1 + nz, x1 - nx, y, z1 - nz,
+      x0 + nx, y, z0 + nz, x1 - nx, y, z1 - nz, x0 - nx, y, z0 - nz
+    );
+  }
+  if (verts.length === 0) continue;
+  const rGeom = new THREE.BufferGeometry();
+  rGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  rGeom.computeVertexNormals();
+  const rMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+  const rMesh = new THREE.Mesh(rGeom, rMat);
+  rMesh.receiveShadow = true;
+  scene.add(rMesh);
+}
+
+// Sidewalks — elevated concrete surfaces alongside vehicular roads
+const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xc8c0b4, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
+const curbMat = new THREE.MeshStandardMaterial({ color: 0x999590, roughness: 0.7, metalness: 0, side: THREE.DoubleSide });
+for (const road of (data.roads || [])) {
+  if (road.points.length < 2) continue;
+  if (road.class === 'footway' || road.class === 'pedestrian' || road.class === 'service') continue;
+
+  const roadHW = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'primary' ? 6 : 3) / 2;
+  const swWidth = 2.0;
+  const swY = 0.12;
+  const curbH = 0.12;
+  const gap = 0.3;
+
+  for (let side = -1; side <= 1; side += 2) {
+    const swVerts = [];
+    const curbVerts = [];
+    for (let i = 0; i < road.points.length - 1; i++) {
+      const [x0, z0] = road.points[i];
+      const [x1, z1] = road.points[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.sqrt(dx*dx + dz*dz);
+      if (len < 0.3) continue;
+      const nx = -dz / len, nz = dx / len;
+
+      const innerOff = roadHW + gap;
+      const outerOff = roadHW + gap + swWidth;
+
+      const ix0 = x0 + nx * innerOff * side, iz0 = z0 + nz * innerOff * side;
+      const ix1 = x1 + nx * innerOff * side, iz1 = z1 + nz * innerOff * side;
+      const ox0 = x0 + nx * outerOff * side, oz0 = z0 + nz * outerOff * side;
+      const ox1 = x1 + nx * outerOff * side, oz1 = z1 + nz * outerOff * side;
+
+      swVerts.push(
+        ix0, swY, iz0, ix1, swY, iz1, ox1, swY, oz1,
+        ix0, swY, iz0, ox1, swY, oz1, ox0, swY, oz0
+      );
+
+      curbVerts.push(
+        ix0, 0, iz0, ix1, 0, iz1, ix1, curbH, iz1,
+        ix0, 0, iz0, ix1, curbH, iz1, ix0, curbH, iz0
+      );
+    }
+    if (swVerts.length > 0) {
+      const swGeom = new THREE.BufferGeometry();
+      swGeom.setAttribute('position', new THREE.Float32BufferAttribute(swVerts, 3));
+      swGeom.computeVertexNormals();
+      const swMesh = new THREE.Mesh(swGeom, sidewalkMat);
+      swMesh.receiveShadow = true;
+      scene.add(swMesh);
+    }
+    if (curbVerts.length > 0) {
+      const curbGeom = new THREE.BufferGeometry();
+      curbGeom.setAttribute('position', new THREE.Float32BufferAttribute(curbVerts, 3));
+      curbGeom.computeVertexNormals();
+      const curbMesh = new THREE.Mesh(curbGeom, curbMat);
+      curbMesh.receiveShadow = true;
+      scene.add(curbMesh);
+    }
+  }
+}
+
+// Trees — varied deciduous with multi-cluster canopy
+const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a2e12, roughness: 0.95 });
+const canopyColors = [0x2d6b2d, 0x3a7a3a, 0x4a8a3a, 0x357035, 0x2a5a2a, 0x3d7a4d];
+for (const tree of (data.trees || [])) {
+  const seed = Math.abs(tree.x * 7 + tree.y * 13) | 0;
+  const scale = 0.7 + (seed % 10) / 15;
+  const trunkH = 2.5 * scale + (seed % 5) * 0.2;
+  const trunkR = 0.12 + (seed % 3) * 0.04;
+
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.7, trunkR, trunkH, 8), trunkMat);
+  trunk.position.set(tree.x, trunkH / 2, tree.y);
+  trunk.castShadow = true;
+  scene.add(trunk);
+
+  const cColor = canopyColors[seed % canopyColors.length];
+  const cMat = new THREE.MeshStandardMaterial({ color: cColor, roughness: 0.85, flatShading: true });
+  const clusters = 3 + (seed % 3);
+  const baseY = trunkH + 1.2 * scale;
+  for (let c = 0; c < clusters; c++) {
+    const cr = (1.2 + (c % 2) * 0.5) * scale;
+    const angle = (c / clusters) * Math.PI * 2 + seed;
+    const offX = Math.cos(angle) * 0.6 * scale;
+    const offZ = Math.sin(angle) * 0.6 * scale;
+    const offY = (c < 2 ? 0.8 : 0) * scale;
+    const cluster = new THREE.Mesh(new THREE.DodecahedronGeometry(cr, 1), cMat);
+    cluster.position.set(tree.x + offX, baseY + offY, tree.y + offZ);
+    cluster.rotation.set(seed + c, seed * 0.7 + c, 0);
+    cluster.castShadow = true;
+    scene.add(cluster);
+  }
+}
+
+// Benches — seat + backrest + metal frame
+const benchWoodMat = new THREE.MeshStandardMaterial({ color: 0x8b5e3c, roughness: 0.75 });
+const benchMetalMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 });
+for (const bench of (data.benches || [])) {
+  const bGroup = new THREE.Group();
+  const angle = (Math.abs(bench.x * 3 + bench.y * 7) | 0) % 2 === 0 ? 0 : Math.PI / 2;
+  bGroup.rotation.y = angle;
+
+  // Seat (5 slats)
+  for (let s = 0; s < 5; s++) {
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.08), benchWoodMat);
+    slat.position.set(0, 0.45, -0.16 + s * 0.08);
+    bGroup.add(slat);
+  }
+  // Backrest (3 slats)
+  for (let s = 0; s < 3; s++) {
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.08), benchWoodMat);
+    slat.position.set(0, 0.58 + s * 0.1, -0.2);
+    slat.rotation.x = 0.15;
+    bGroup.add(slat);
+  }
+  // Metal legs (4)
+  for (let lx = -1; lx <= 1; lx += 2) {
+    for (let lz = -1; lz <= 1; lz += 2) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.45, 6), benchMetalMat);
+      leg.position.set(lx * 0.55, 0.22, lz * 0.12);
+      bGroup.add(leg);
+    }
+  }
+  // Armrests
+  for (let ax = -1; ax <= 1; ax += 2) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.35), benchMetalMat);
+    arm.position.set(ax * 0.65, 0.55, -0.05);
+    bGroup.add(arm);
+  }
+
+  bGroup.position.set(bench.x, 0, bench.y);
+  bGroup.traverse(c => { if (c.isMesh) c.castShadow = true; });
+  scene.add(bGroup);
+}
+
+// Bike racks — inverted-U staple style
+const rackMat = new THREE.MeshStandardMaterial({ color: 0x707070, roughness: 0.35, metalness: 0.8 });
+for (const rack of (data.bike_racks || [])) {
+  const rGroup = new THREE.Group();
+  const pipeR = 0.025;
+  // U-shape: two vertical posts + semicircle top
+  for (let side = -1; side <= 1; side += 2) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, 0.75, 8), rackMat);
+    post.position.set(side * 0.2, 0.375, 0);
+    rGroup.add(post);
+  }
+  const curve = new THREE.Mesh(new THREE.TorusGeometry(0.2, pipeR, 8, 12, Math.PI), rackMat);
+  curve.position.set(0, 0.75, 0);
+  curve.rotation.z = Math.PI;
+  curve.rotation.y = Math.PI / 2;
+  rGroup.add(curve);
+
+  const angle = (Math.abs(rack.x * 5 + rack.y * 11) | 0) % 2 === 0 ? 0 : Math.PI / 2;
+  rGroup.rotation.y = angle;
+  rGroup.position.set(rack.x, 0, rack.y);
+  rGroup.traverse(c => { if (c.isMesh) c.castShadow = true; });
+  scene.add(rGroup);
+}
+
+// Street lamps — placed on sidewalks alongside roads
+const lampPoleMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.3, metalness: 0.8 });
+const lampGlowMat = new THREE.MeshStandardMaterial({ color: 0xfff8e0, emissive: 0xfff0c0, emissiveIntensity: 0.3, roughness: 0.2 });
+for (const road of (data.roads || [])) {
+  if (road.class !== 'tertiary' && road.class !== 'residential' && road.class !== 'primary') continue;
+  if (road.points.length < 2) continue;
+  let accum = 12;
+  const spacing = 30;
+  const roadHW = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : 6) / 2;
+  const lampOffset = roadHW + 0.3 + 1.0;
+  for (let i = 0; i < road.points.length - 1; i++) {
+    const [x0, z0] = road.points[i];
+    const [x1, z1] = road.points[i + 1];
+    const dx = x1 - x0, dz = z1 - z0;
+    const segLen = Math.sqrt(dx*dx + dz*dz);
+    if (segLen < 1) continue;
+    const nx = -dz / segLen, nz = dx / segLen;
+    while (accum < segLen) {
+      const t = accum / segLen;
+      const px = x0 + dx * t, pz = z0 + dz * t;
+      const side = ((i + Math.floor(accum / spacing)) % 2 === 0) ? 1 : -1;
+      const lx = px + nx * lampOffset * side, lz = pz + nz * lampOffset * side;
+
+      const lGroup = new THREE.Group();
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 4.5, 8), lampPoleMat);
+      pole.position.y = 2.25;
+      lGroup.add(pole);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 6), lampPoleMat);
+      arm.position.set(0.4, 4.3, 0);
+      arm.rotation.z = Math.PI / 2.5;
+      lGroup.add(arm);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), lampGlowMat);
+      lamp.position.set(0.7, 4.2, 0);
+      lGroup.add(lamp);
+
+      lGroup.position.set(lx, 0, lz);
+      lGroup.rotation.y = Math.atan2(dx, dz);
+      lGroup.traverse(c => { if (c.isMesh) c.castShadow = true; });
+      scene.add(lGroup);
+      accum += spacing;
+    }
+    accum -= segLen;
+  }
+}
+
+// Street labels — projected onto road surface
+function createRoadLabel(text, length) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 64;
+  const ctx2 = c.getContext('2d');
+  ctx2.font = '600 36px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx2.textAlign = 'center';
+  ctx2.textBaseline = 'middle';
+  ctx2.fillStyle = '#ffffff';
+  ctx2.fillText(text.toUpperCase(), c.width / 2, c.height / 2);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const aspect = c.width / c.height;
+  const labelLen = Math.min(length * 0.6, 20);
+  const geom = new THREE.PlaneGeometry(labelLen, labelLen / aspect);
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.7, depthWrite: false });
+  return new THREE.Mesh(geom, mat);
+}
+
+for (const label of (data.street_labels || [])) {
+  const mesh = createRoadLabel(label.name, 18);
+  mesh.rotation.x = -Math.PI / 2;
+  const angleRad = label.angle * Math.PI / 180;
+  mesh.rotation.z = -angleRad;
+  mesh.position.set(label.x, 0.08, label.y);
+  scene.add(mesh);
+}
+
+// Mode buttons
+function setMode(mode) {
+  currentMode = mode;
+  rebuildScene(mode);
+  document.querySelectorAll('#controls button').forEach(b => b.classList.remove('active'));
+}
+document.getElementById('btn-textured').addEventListener('click', () => { setMode('textured'); document.getElementById('btn-textured').classList.add('active'); });
+document.getElementById('btn-color').addEventListener('click', () => { setMode('color'); document.getElementById('btn-color').classList.add('active'); });
+document.getElementById('btn-wireframe').addEventListener('click', () => { setMode('wireframe'); document.getElementById('btn-wireframe').classList.add('active'); });
+
+// Camera presets
+document.getElementById('btn-street').addEventListener('click', () => {
+  camera.position.set(0, 2.5, 35);
+  controls.target.set(0, 4, 0);
+});
+document.getElementById('btn-birds').addEventListener('click', () => {
+  camera.position.set(0, 180, 20);
+  controls.target.set(0, 0, 0);
+});
+document.getElementById('btn-orbit').addEventListener('click', () => {
+  camera.position.set(80, 60, 120);
+  controls.target.set(0, 4, 0);
+});
+
+// Raycasting
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+canvas.addEventListener('mousemove', (e) => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(scene.children, true);
+
+  let hit = null;
+  for (const inter of intersects) {
+    let obj = inter.object;
+    while (obj.parent && !obj.userData?.id) obj = obj.parent;
+    if (obj.userData?.id) { hit = obj.userData; break; }
+  }
+
+  if (hit) {
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY + 14) + 'px';
+
+    const poiLabel = hit.pois && hit.pois.length > 0
+      ? hit.pois.join(', ')
+      : `Building (${hit.height}m, ${hit.style?.stories || '?'} stories)`;
+    const tag = hit.has_mapillary
+      ? '<span class="tag tag-direct">VLM-INFORMED FACADE</span>'
+      : '';
+    const desc = hit.style?.description || '';
+    const mat = hit.style?.material ? `Material: ${hit.style.material}` : '';
+    const detail = desc || mat || `${hit.walls?.length || 0} faces rendered`;
+
+    tooltip.innerHTML = `<strong>${poiLabel}</strong>${tag ? '<br>' + tag : ''}<br><span style="color:#94a3b8">${detail}</span>`;
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+{
+  "954cb30c-1eb3-41e2-b7b0-f6640a4c3595": {
+    "base_color": "#97927e",
+    "features": [
+      {
+        "type": "solar_panels",
+        "coverage": 0.2
+      },
+      {
+        "type": "light_membrane",
+        "coverage": 0.4
+      }
+    ]
+  },
+  "b64dc737-f797-43fa-98f8-8fffa62c2338": {
+    "base_color": "#a0a091",
+    "features": [
+      {
+        "type": "hvac_units",
+        "coverage": 0.51
+      },
+      {
+        "type": "light_membrane",
+        "coverage": 0.43
+      }
+    ]
+  },
+  "78f21e0e-2859-4e6c-b5a6-8be6abd53b80": {
+    "base_color": "#a2a08c",
+    "features": [
+      {
+        "type": "solar_panels",
+        "coverage": 0.1
+      },
+      {
+        "type": "hvac_units",
+        "coverage": 0.25
+      },
+      {
+        "type": "light_membrane",
+        "coverage": 0.4
+      }
+    ]
+  },
+  "bb6ab86f-1a76-4a4d-9a3e-9338fb05e067": {
+    "base_color": "#7d7d70",
+    "features": []
+  },
+  "e6ca7522-53d7-4842-a190-287b28b224f6": {
+    "base_color": "#606460",
+    "features": [
+      {
+        "type": "solar_panels",
+        "coverage": 0.12
+      }
+    ]
+  },
+  "f61c4184-d69c-4fc7-b873-1d42d8b69c8e": {
+    "base_color": "#74766e",
+    "features": []
+  },
+  "87322f55-be84-4bf4-8582-17d979622abf": {
+    "base_color": "#9d9e8d",
+    "features": [
+      {
+        "type": "light_membrane",
+        "coverage": 0.63
+      }
+    ]
+  },
+  "6c30df94-a81e-4f61-b05c-f5087093cdce": {
+    "base_color": "#adaa97",
+    "features": [
+      {
+        "type": "hvac_units",
+        "coverage": 0.48
+      },
+      {
+        "type": "light_membrane",
+        "coverage": 0.45
+      }
+    ]
+  },
+  "67797069-8ea7-4f97-8280-4ab9392d1bdf": {
+    "base_color": "#999c95",
+    "features": [
+      {
+        "type": "hvac_units",
+        "coverage": 0.22
+      },
+      {
+        "type": "light_membrane",
+        "coverage": 0.49
+      }
+    ]
+  },
+  "6bf9d300-d51d-428d-b923-519fc0f90351": {
+    "base_color": "#6a7376",
+    "features": [
+      {
+        "type": "hvac_units",
+        "coverage": 0.51
+      }
+    ]
+  }
+}

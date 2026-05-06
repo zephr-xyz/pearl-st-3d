@@ -1,0 +1,263 @@
+[
+  {
+    "building_id": "f61c4184-d69c-4fc7-b873-1d42d8b69c8e",
+    "pois": [
+      "Independent Order of Odd Fellows",
+      "Marpa Landscape Architecture",
+      "Dancing Grains Woodworks"
+    ],
+    "has_mapillary_coverage": true,
+    "total_images": 28,
+    "visual_descriptions": [
+      {
+        "poi": "Independent Order of Odd Fellows",
+        "description": "The Independent Order of Odd Fellows (IOOF) occupies a historic three-story red brick and sandstone Romanesque Revival building dating to 1899, prominently located at a city intersection. The building features decorative architectural elements including arched third-floor windows, a central pediment, and corner signage identifying the Odd Fellows and Rebekah Lodge. Its ground floor currently hosts a \"2nd Street\" secondhand clothing store, with large window banners advertising an upcoming retail space for buying and selling men's and women's accessories. The structure stands in a dense urban commercial district, surrounded by modern buildings, parked vehicles, and pedestrian infrastructure like crosswalks and utility poles. The building's weathered red brick and white stone accents create a striking visual contrast against the clear blue sky and contemporary urban landscape."
+      }
+    ],
+    "entrances": [
+      {
+        "poi": "Independent Order of Odd Fellows",
+        "lat": 40.01905173548351,
+        "lon": -105.27492235191932
+      },
+      {
+        "poi": "Marpa Landscape Architecture",
+        "lat": 40.019036,
+        "lon": -105.2750134
+      },
+      {
+        "poi": "Dancing Grains Woodworks",
+        "lat": 40.019040317667546,
+        "lon": -105.27498841726955
+      }
+    ],
+    "facade_bearings": []
+  },
+  {
+    "building_id": "954cb30c-1eb3-41e2-b7b0-f6640a4c3595",
+    "pois": [
+      "PosterScene",
+      "Barbara & Company",
+      "Art and Soul Boulder",
+      "John Allen Woodward",
+      "Barker Park",
+      "Art + Soul Gallery"
+    ],
+    "has_mapillary_coverage": true,
+    "total_images": 43,
+    "visual_descriptions": [
+      {
+        "poi": "PosterScene",
+        "description": "PosterScene is a vibrant pop culture poster shop located in a reddish-orange brick building with large plate-glass windows framed in navy blue steel. The storefront displays a colorful psychedelic banner and features an extensive collection of posters ranging from sci-fi movie prints to vintage travel and entertainment memorabilia. A white A-frame sign out front advertises a clearance sale, attracting passersby with its bold red and blue lettering. Behind the building, a curved concrete plaza with circular gathering spaces and multiple benches provides additional outdoor amenities. Adjacent to the poster shop is The Dragonfly, a holistic day spa, creating a diverse commercial strip with a neighborhood feel."
+      },
+      {
+        "poi": "Barbara & Company",
+        "description": "Barbara & Company is a modern boutique located in a multi-story urban building with a distinctive industrial-style storefront featuring dark navy blue steel beams and expansive floor-to-ceiling glass windows. The shop displays clothing and accessories in its windows, with a prominent black hanging sign and white vinyl lettering identifying the business. Behind the storefront, the property includes two circular concrete patio areas with seating and landscaped walkways, creating an inviting outdoor space. The storefront is adorned with a cobalt blue ceramic planter and an A-frame sign promoting fall collections and a customer appreciation sale, while its hours of operation are clearly posted as Monday through Saturday 10am to 6pm and Sunday 11am to 5pm. The building is integrated into a continuous street frontage with a reddish-brown terracotta stone base and a traditional red brick upper facade."
+      },
+      {
+        "poi": "Art and Soul Boulder",
+        "description": "Art and Soul Boulder is a contemporary storefront located in a mixed-use urban development, featuring a brick facade and large glass display windows with prominent signage. The business is situated along a street with electric scooter parking and adjacent to other retail spaces, creating a vibrant commercial environment. Behind the building, curved concrete walkways connect multiple circular plaza areas with integrated outdoor seating, providing gathering spaces for visitors. The property includes landscaped common areas that complement the modern architectural design, with green spaces and seating zones enhancing the overall aesthetic. The surrounding urban landscape features soft afternoon lighting, creating a welcoming atmosphere for customers and pedestrians."
+      },
+      {
+        "poi": "Barker Park",
+        "description": "Nestled in an institutional area, Barker Park offers a compact urban green space with diverse recreational amenities, including a well-equipped playground and a basketball court surrounded by mature trees. Paved pathways connect the park's various features, creating inviting pedestrian spaces that encourage community interaction and outdoor activities. The park's layout blends green and hardscaped areas, providing visitors with multiple options for relaxation and play within a carefully designed urban landscape."
+      }
+    ],
+    "entrances": [
+      {
+        "poi": "PosterScene",
+        "lat": 40.01893728372638,
+        "lon": -105.2755134791774
+      },
+      {
+        "poi": "Barbara & Company",
+        "lat": 40.018932108574425,
+        "lon": -105.27553865828214
+      },
+      {
+        "poi": "Art and Soul Boulder",
+        "lat": 40.01890157897595,
+        "lon": -105.27568749115592
+      },
+      {
+        "poi": "John Allen Woodward",
+        "lat": 40.0188835,
+        "lon": -105.2757758
+      },
+      {
+        "poi": "Barker Park",
+        "lat": 40.01916419730915,
+        "lon": -105.27608452819484
+      },
+      {
+        "poi": "Art + Soul Gallery",
+        "lat": 40.0188835,
+        "lon": -105.2757758
+      }
+    ],
+    "facade_bearings": []
+  },
+  {
+    "building_id": "67797069-8ea7-4f97-8280-4ab9392d1bdf",
+    "pois": [
+      "Mountain Sun Pub & Brewery"
+    ],
+    "has_mapillary_coverage": true,
+    "total_images": 14,
+    "visual_descriptions": [
+      {
+        "poi": "Mountain Sun Pub & Brewery",
+        "description": "Mountain Sun Pub & Brewery occupies a historic two-story building with a distinctive sage-green upper floor featuring ornate white scrollwork and three vertical windows. The facade is adorned with a purple and yellow sign displaying the brewery's name, and large windows provide views into the interior space. Gray patio umbrellas shade outdoor seating areas to the right of the building, where patrons can enjoy drinks and meals. Behind the main structure, a circular paved area with decorative brick or stone patterns serves as an additional outdoor plaza. The building is part of a vibrant downtown commercial block with a mix of architectural styles, situated on a street lined with other local businesses and street parking."
+      }
+    ],
+    "entrances": [
+      {
+        "poi": "Mountain Sun Pub & Brewery",
+        "lat": 40.0189982905072,
+        "lon": -105.27520810234857
+      }
+    ],
+    "facade_bearings": []
+  },
+  {
+    "building_id": "6bf9d300-d51d-428d-b923-519fc0f90351",
+    "pois": [
+      "Backcountry"
+    ],
+    "has_mapillary_coverage": true,
+    "total_images": 12,
+    "visual_descriptions": [
+      {
+        "poi": "Backcountry",
+        "description": "Backcountry is a retail business located in a historic downtown commercial block, housed within a dark brick building alongside other storefronts on a vibrant urban street. The business is positioned near a \"Mountain Sun\" pub and a secondhand clothing store, with a prominent circular yellow sign displaying its name and a \"Back country\" subtitle. A concrete sidewalk approximately 5-6 feet wide runs along the right side of the building, providing pedestrian access. The surrounding area features a mix of architectural styles, including Victorian-era brick buildings and modern glass storefronts, with street parking available directly in front of the establishment. The location is characterized by a clear, sunny atmosphere with a deep blue sky and distinctive urban streetscape details."
+      }
+    ],
+    "entrances": [
+      {
+        "poi": "Backcountry",
+        "lat": 40.01901423307942,
+        "lon": -105.27512639873056
+      }
+    ],
+    "facade_bearings": []
+  },
+  {
+    "building_id": "e6ca7522-53d7-4842-a190-287b28b224f6",
+    "pois": [
+      "OZO Coffee",
+      "The Dragontree"
+    ],
+    "has_mapillary_coverage": true,
+    "total_images": 23,
+    "visual_descriptions": [
+      {
+        "poi": "The Dragontree",
+        "description": "The Dragontree Spa occupies a dark-colored storefront in a vibrant urban commercial district, distinguished by its ornate white signage and prominent tree logo. Located at 1521, the spa is situated alongside other businesses like the Cup Espresso Cafe and Mountain Sun Pub & Brewery, creating a bustling pedestrian-friendly environment with bike racks, street parking, and outdoor seating. The building features large glass windows and is part of a mixed-use neighborhood with modern and historic architectural elements. Pedestrians and cyclists frequently populate the surrounding sidewalk, and the spa appears to be a key part of a dynamic, walkable urban landscape. The property is positioned in a single-story commercial strip development with curved parking areas and easy street access."
+      }
+    ],
+    "entrances": [
+      {
+        "poi": "OZO Coffee",
+        "lat": 40.0189707,
+        "lon": -105.27535
+      },
+      {
+        "poi": "The Dragontree",
+        "lat": 40.01897122516327,
+        "lon": -105.27534732095765
+      }
+    ],
+    "facade_bearings": []
+  },
+  {
+    "building_id": "bb6ab86f-1a76-4a4d-9a3e-9338fb05e067",
+    "pois": [
+      "Boulder Day Nursery"
+    ],
+    "has_mapillary_coverage": false,
+    "total_images": 0,
+    "visual_descriptions": [],
+    "entrances": [
+      {
+        "poi": "Boulder Day Nursery",
+        "lat": 40.0196517,
+        "lon": -105.2758475
+      }
+    ],
+    "facade_bearings": []
+  },
+  {
+    "building_id": "b64dc737-f797-43fa-98f8-8fffa62c2338",
+    "pois": [
+      "JKA Design"
+    ],
+    "has_mapillary_coverage": false,
+    "total_images": 0,
+    "visual_descriptions": [],
+    "entrances": [
+      {
+        "poi": "JKA Design",
+        "lat": 40.01969023125423,
+        "lon": -105.27561736543355
+      }
+    ],
+    "facade_bearings": []
+  },
+  {
+    "building_id": "87322f55-be84-4bf4-8582-17d979622abf",
+    "pois": [
+      "Law Office of Bartley A Costello",
+      "Suti and Co"
+    ],
+    "has_mapillary_coverage": false,
+    "total_images": 0,
+    "visual_descriptions": [],
+    "entrances": [
+      {
+        "poi": "Law Office of Bartley A Costello",
+        "lat": 40.019639,
+        "lon": -105.2751894
+      },
+      {
+        "poi": "Suti and Co",
+        "lat": 40.0195936,
+        "lon": -105.2751756
+      }
+    ],
+    "facade_bearings": []
+  },
+  {
+    "building_id": "78f21e0e-2859-4e6c-b5a6-8be6abd53b80",
+    "pois": [
+      "Village Green Society"
+    ],
+    "has_mapillary_coverage": false,
+    "total_images": 0,
+    "visual_descriptions": [],
+    "entrances": [
+      {
+        "poi": "Village Green Society",
+        "lat": 40.01977771369827,
+        "lon": -105.27528434155667
+      }
+    ],
+    "facade_bearings": []
+  },
+  {
+    "building_id": "6c30df94-a81e-4f61-b05c-f5087093cdce",
+    "pois": [
+      "LibertyX Bitcoin ATM"
+    ],
+    "has_mapillary_coverage": false,
+    "total_images": 0,
+    "visual_descriptions": [],
+    "entrances": [
+      {
+        "poi": "LibertyX Bitcoin ATM",
+        "lat": 40.019729,
+        "lon": -105.2752539
+      }
+    ],
+    "facade_bearings": []
+  }
+]
