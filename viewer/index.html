@@ -150,9 +150,34 @@ back.position.set(-10, 30, -40);
 scene.add(back);
 
 // Ground plane
+// Ground plane with procedural urban texture
+const groundCanvas = document.createElement('canvas');
+groundCanvas.width = 512; groundCanvas.height = 512;
+const gCtx = groundCanvas.getContext('2d');
+gCtx.fillStyle = '#b8ad9e';
+gCtx.fillRect(0, 0, 512, 512);
+// Add subtle noise/variation for realism
+for (let i = 0; i < 3000; i++) {
+  const x = Math.random() * 512, y = Math.random() * 512;
+  const shade = 160 + Math.floor(Math.random() * 30);
+  gCtx.fillStyle = `rgb(${shade},${shade-8},${shade-16})`;
+  gCtx.fillRect(x, y, 2 + Math.random() * 3, 2 + Math.random() * 3);
+}
+// Grid lines (faint block/lot boundaries)
+gCtx.strokeStyle = 'rgba(140,130,120,0.15)';
+gCtx.lineWidth = 1;
+for (let x = 0; x < 512; x += 64) { gCtx.beginPath(); gCtx.moveTo(x, 0); gCtx.lineTo(x, 512); gCtx.stroke(); }
+for (let y = 0; y < 512; y += 64) { gCtx.beginPath(); gCtx.moveTo(0, y); gCtx.lineTo(512, y); gCtx.stroke(); }
+
+const groundTex = new THREE.CanvasTexture(groundCanvas);
+groundTex.wrapS = THREE.RepeatWrapping;
+groundTex.wrapT = THREE.RepeatWrapping;
+groundTex.repeat.set(12, 12);
+groundTex.colorSpace = THREE.SRGBColorSpace;
+
 const groundGeom = new THREE.PlaneGeometry(600, 600);
 const groundMat = new THREE.MeshStandardMaterial({
-  color: 0xc8bfb0, roughness: 0.85, metalness: 0,
+  map: groundTex, roughness: 0.9, metalness: 0,
   polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4
 });
 const ground = new THREE.Mesh(groundGeom, groundMat);
@@ -762,6 +787,79 @@ function rebuildScene(mode) {
 }
 
 rebuildScene('textured');
+
+// Ground features — Overture land_use/land_cover polygons
+const groundFeatureColors = {
+  park: 0x5a9a4a, recreation: 0x6aaa5a, managed: 0x7ab56a,
+  horticulture: 0x4d8c3d, education: 0xb8a88a, religious: 0xc4b89a,
+  developed: 0xa09080, protected: 0x5a8a4a,
+  grass: 0x6ab05a, forest: 0x3a6a2a, urban: 0x908070, crop: 0x9ab060
+};
+const groundFeatureRoughness = {
+  park: 0.95, recreation: 0.92, managed: 0.95, horticulture: 0.95,
+  education: 0.8, religious: 0.75, developed: 0.7
+};
+
+function triangulatePoly(pts) {
+  if (pts.length < 3) return [];
+  const tris = [];
+  for (let i = 1; i < pts.length - 1; i++) {
+    tris.push(pts[0], pts[i], pts[i + 1]);
+  }
+  return tris;
+}
+
+for (const feat of (data.ground_features || [])) {
+  if (feat.points.length < 3) continue;
+  const color = groundFeatureColors[feat.subtype] || 0x88aa66;
+  const roughness = groundFeatureRoughness[feat.subtype] || 0.9;
+  const isVegetation = ['park', 'recreation', 'managed', 'horticulture', 'protected', 'grass', 'forest'].includes(feat.subtype);
+  const y = -0.03;
+
+  const triPts = triangulatePoly(feat.points);
+  if (triPts.length < 3) continue;
+
+  const verts = [];
+  for (const p of triPts) {
+    verts.push(p[0], y, p[1]);
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geom.computeVertexNormals();
+
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness, metalness: 0, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3
+  });
+  const mesh = new THREE.Mesh(geom, mat);
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+
+  // Add grass tufts for vegetation areas
+  if (isVegetation && feat.area > 50) {
+    const numTufts = Math.min(Math.floor(feat.area / 20), 40);
+    const xs = feat.points.map(p => p[0]), ys = feat.points.map(p => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const tufts = [];
+    let placed = 0, attempts = 0;
+    while (placed < numTufts && attempts < numTufts * 4) {
+      attempts++;
+      const tx = minX + Math.random() * (maxX - minX);
+      const ty = minY + Math.random() * (maxY - minY);
+      tufts.push(tx, 0.08, ty);
+      placed++;
+    }
+    if (tufts.length > 0) {
+      const tGeom = new THREE.BufferGeometry();
+      tGeom.setAttribute('position', new THREE.Float32BufferAttribute(tufts, 3));
+      const tMat = new THREE.PointsMaterial({ color: 0x3a7a2a, size: 0.6, sizeAttenuation: true });
+      const tPoints = new THREE.Points(tGeom, tMat);
+      scene.add(tPoints);
+    }
+  }
+}
 
 // Roads — rendered as flat quads
 const roadColors = { tertiary: 0x4a4a4a, residential: 0x5a5a5a, footway: 0xd4c4a8, pedestrian: 0xddd0b8, service: 0x6a6a6a };
