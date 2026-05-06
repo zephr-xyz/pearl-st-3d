@@ -249,6 +249,9 @@ def main():
     with open(f"{DATA_DIR}/block_summary.json") as f:
         summary = json.load(f)
 
+    with open(f"{DATA_DIR}/tile_x3400_y6201.json") as f:
+        tile_data = json.load(f)
+
     # Reference point (scene center)
     all_coords = []
     for bld in footprints.values():
@@ -256,10 +259,20 @@ def main():
     ref_lat = sum(c[0] for c in all_coords) / len(all_coords)
     ref_lon = sum(c[1] for c in all_coords) / len(all_coords)
 
-    # POI lookup from block_summary
+    # POI lookup: start with block_summary (original 10 buildings)
     pois_by_building = {}
     for s in summary:
         pois_by_building[s["building_id"]] = s["pois"]
+
+    # Augment with tile waypoints for all 275 buildings
+    bld_ids = set(footprints.keys())
+    for wp in tile_data.get("waypoints", []):
+        bid = wp.get("overture_building_id")
+        if bid and bid in bld_ids and wp.get("name"):
+            if bid not in pois_by_building:
+                pois_by_building[bid] = []
+            if wp["name"] not in pois_by_building[bid]:
+                pois_by_building[bid].append(wp["name"])
 
     # Generate buildings
     buildings = []
