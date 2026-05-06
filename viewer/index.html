@@ -1153,10 +1153,13 @@ const terrainMat = new THREE.MeshStandardMaterial({
 const terrainMesh = new THREE.Mesh(terrainGeom, terrainMat);
 terrainMesh.rotation.x = -Math.PI / 2;
 
-// Position terrain so scene center aligns
-const centerOffX = (terrain.ref_lon - (terrain.nw_lon + terrain.se_lon) / 2) * mPerDegLon;
-const centerOffZ = ((terrain.nw_lat + terrain.se_lat) / 2 - terrain.ref_lat) * mPerDegLat;
-terrainMesh.position.set(-centerOffX, -0.1, centerOffZ);
+// Position terrain so scene center aligns with ref point
+// Scene coords: X = (lon - ref_lon) * mPerDegLon, Z = (lat - ref_lat) * mPerDegLat
+const terrainCenterLon = (terrain.nw_lon + terrain.se_lon) / 2;
+const terrainCenterLat = (terrain.nw_lat + terrain.se_lat) / 2;
+const tcX = (terrainCenterLon - terrain.ref_lon) * mPerDegLon;
+const tcZ = (terrainCenterLat - terrain.ref_lat) * mPerDegLat;
+terrainMesh.position.set(tcX, -0.1, tcZ);
 terrainMesh.receiveShadow = true;
 scene.add(terrainMesh);
 
