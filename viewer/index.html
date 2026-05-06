@@ -130,8 +130,8 @@ controls.maxDistance = 3000;
 const ambient = new THREE.HemisphereLight(0xffffff, 0xe8e0d8, 0.9);
 scene.add(ambient);
 
-const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-sun.position.set(40, 100, 50);
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(80, 60, 50);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
 sun.shadow.camera.left = -200;
@@ -1125,20 +1125,25 @@ for (let i = 0; i < posAttr.count; i++) {
 posAttr.needsUpdate = true;
 terrainGeom.computeVertexNormals();
 
-// Color terrain by elevation: green lowlands → brown → gray rock
+// NAIP-derived vertex colors with brightness boost for visibility
 const terrainColors = new Float32Array(posAttr.count * 3);
+const hasColors = terrain.colors && terrain.colors.length >= posAttr.count * 3;
 for (let i = 0; i < posAttr.count; i++) {
-  const elev = terrain.elevations[i] - baseElev;
-  const t = Math.min(elev / 1000, 1);
   let r, g, b;
-  if (t < 0.15) {
-    r = 0.82; g = 0.85; b = 0.76;
-  } else if (t < 0.4) {
-    const s = (t - 0.15) / 0.25;
-    r = 0.82 - s * 0.15; g = 0.85 - s * 0.2; b = 0.76 - s * 0.2;
+  if (hasColors) {
+    r = terrain.colors[i * 3] / 255;
+    g = terrain.colors[i * 3 + 1] / 255;
+    b = terrain.colors[i * 3 + 2] / 255;
+    // Boost brightness and saturation for cartographic clarity
+    const lum = r * 0.3 + g * 0.59 + b * 0.11;
+    const boost = 1.4;
+    r = Math.min(1, r * boost + 0.05);
+    g = Math.min(1, g * boost + 0.05);
+    b = Math.min(1, b * boost + 0.03);
   } else {
-    const s = (t - 0.4) / 0.6;
-    r = 0.67 + s * 0.1; g = 0.65 + s * 0.05; b = 0.56 + s * 0.1;
+    const elev = terrain.elevations[i] - baseElev;
+    const t = Math.min(elev / 1000, 1);
+    r = 0.75 + t * 0.1; g = 0.8 - t * 0.15; b = 0.7 - t * 0.2;
   }
   terrainColors[i * 3] = r;
   terrainColors[i * 3 + 1] = g;
@@ -1147,8 +1152,8 @@ for (let i = 0; i < posAttr.count; i++) {
 terrainGeom.setAttribute('color', new THREE.BufferAttribute(terrainColors, 3));
 
 const terrainMat = new THREE.MeshStandardMaterial({
-  vertexColors: true, roughness: 0.95, metalness: 0,
-  side: THREE.DoubleSide, flatShading: true
+  vertexColors: true, roughness: 0.8, metalness: 0,
+  side: THREE.DoubleSide
 });
 const terrainMesh = new THREE.Mesh(terrainGeom, terrainMat);
 terrainMesh.rotation.x = -Math.PI / 2;
