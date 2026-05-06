@@ -104,7 +104,7 @@ const textureLoader = new THREE.TextureLoader();
 
 // Scene setup
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xf2e8dc, 500, 5000);
+scene.fog = new THREE.Fog(0xd4eaf7, 800, 6000);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 8000);
 camera.position.set(90, 35, -55);
@@ -149,11 +149,54 @@ const back = new THREE.DirectionalLight(0xfff8f0, 0.3);
 back.position.set(-10, 40, -50);
 scene.add(back);
 
-// Ground plane
-// Ground plane removed — terrain mesh serves as ground
+// Sky — procedural gradient with clouds
+const skyCanvas = document.createElement('canvas');
+skyCanvas.width = 1024; skyCanvas.height = 512;
+const skyCtx = skyCanvas.getContext('2d');
 
-// Sky — light warm tone matching Mapbox land
-scene.background = new THREE.Color(0xf2e8dc);
+// Gradient: deep blue at top → lighter blue → warm white at horizon
+const grad = skyCtx.createLinearGradient(0, 0, 0, 512);
+grad.addColorStop(0, '#4a90d9');
+grad.addColorStop(0.3, '#7ab8e8');
+grad.addColorStop(0.6, '#a8d4f0');
+grad.addColorStop(0.85, '#d4eaf7');
+grad.addColorStop(1.0, '#f0ece6');
+skyCtx.fillStyle = grad;
+skyCtx.fillRect(0, 0, 1024, 512);
+
+// Procedural clouds
+skyCtx.globalAlpha = 0.6;
+for (let i = 0; i < 40; i++) {
+  const cx = Math.random() * 1024;
+  const cy = 120 + Math.random() * 200;
+  const w = 60 + Math.random() * 150;
+  const h = 20 + Math.random() * 40;
+  const cloudGrad = skyCtx.createRadialGradient(cx, cy, 0, cx, cy, w/2);
+  cloudGrad.addColorStop(0, 'rgba(255,255,255,0.8)');
+  cloudGrad.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+  cloudGrad.addColorStop(1, 'rgba(255,255,255,0)');
+  skyCtx.fillStyle = cloudGrad;
+  skyCtx.fillRect(cx - w/2, cy - h/2, w, h);
+  // Puff clusters
+  for (let p = 0; p < 3; p++) {
+    const px = cx + (Math.random() - 0.5) * w * 0.6;
+    const py = cy + (Math.random() - 0.5) * h * 0.8;
+    const pr = 15 + Math.random() * 30;
+    const pGrad = skyCtx.createRadialGradient(px, py, 0, px, py, pr);
+    pGrad.addColorStop(0, 'rgba(255,255,255,0.7)');
+    pGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    skyCtx.fillStyle = pGrad;
+    skyCtx.beginPath();
+    skyCtx.arc(px, py, pr, 0, Math.PI * 2);
+    skyCtx.fill();
+  }
+}
+skyCtx.globalAlpha = 1.0;
+
+const skyTex = new THREE.CanvasTexture(skyCanvas);
+skyTex.mapping = THREE.EquirectangularReflectionMapping;
+skyTex.colorSpace = THREE.SRGBColorSpace;
+scene.background = skyTex;
 
 // Load scene data
 const resp = await fetch('scene.json');
