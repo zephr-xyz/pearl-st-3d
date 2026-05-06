@@ -297,6 +297,88 @@ def point_in_polygon(lat, lon, coords):
     return inside
 
 
+def polygon_area_signed(pts):
+    """Signed area of a 2D polygon. Positive = CCW."""
+    n = len(pts)
+    area = 0.0
+    for i in range(n):
+        j = (i + 1) % n
+        area += pts[i][0] * pts[j][1]
+        area -= pts[j][0] * pts[i][1]
+    return area / 2.0
+
+
+def point_in_triangle(px, py, ax, ay, bx, by, cx, cy):
+    """Check if point (px,py) is inside triangle (a,b,c) using barycentric coords."""
+    denom = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy)
+    if abs(denom) < 1e-12:
+        return False
+    u = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / denom
+    v = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / denom
+    w = 1.0 - u - v
+    return u >= -1e-10 and v >= -1e-10 and w >= -1e-10
+
+
+def triangulate_polygon(pts):
+    """Ear-clipping triangulation for simple polygons (convex or concave).
+    Returns list of triangle index triples."""
+    n = len(pts)
+    if n < 3:
+        return []
+    if n == 3:
+        return [(0, 1, 2)]
+
+    # Ensure CCW winding
+    indices = list(range(n))
+    if polygon_area_signed(pts) < 0:
+        indices.reverse()
+
+    triangles = []
+    remaining = list(indices)
+
+    max_iter = n * n
+    iteration = 0
+    while len(remaining) > 2 and iteration < max_iter:
+        iteration += 1
+        found_ear = False
+        nr = len(remaining)
+        for i in range(nr):
+            prev_idx = remaining[(i - 1) % nr]
+            curr_idx = remaining[i]
+            next_idx = remaining[(i + 1) % nr]
+
+            ax, ay = pts[prev_idx]
+            bx, by = pts[curr_idx]
+            cx, cy = pts[next_idx]
+
+            # Check if this vertex is convex (left turn in CCW polygon)
+            cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+            if cross <= 0:
+                continue
+
+            # Check no other vertex is inside this triangle
+            ear_valid = True
+            for j in range(nr):
+                check_idx = remaining[j]
+                if check_idx in (prev_idx, curr_idx, next_idx):
+                    continue
+                if point_in_triangle(pts[check_idx][0], pts[check_idx][1],
+                                     ax, ay, bx, by, cx, cy):
+                    ear_valid = False
+                    break
+
+            if ear_valid:
+                triangles.append((prev_idx, curr_idx, next_idx))
+                remaining.pop(i)
+                found_ear = True
+                break
+
+        if not found_ear:
+            break
+
+    return triangles
+
+
 def latlon_to_meters(lat, lon, ref_lat, ref_lon):
     dlat = (lat - ref_lat) * METERS_PER_DEG_LAT
     dlon = (lon - ref_lon) * m_lng_at(ref_lat)
@@ -437,16 +519,18 @@ def main():
 
             walls.append(wall)
 
-        # Roof
+        # Roof (ear-clipping triangulation for correct concave polygon handling)
         cx = sum(c[0] for c in coords_m[:n]) / n
         cy = sum(c[1] for c in coords_m[:n]) / n
+        roof_pts_2d = [(coords_m[i][0], coords_m[i][1]) for i in range(n)]
+        roof_tris = triangulate_polygon(roof_pts_2d)
         roof_verts = []
-        for i in range(n):
-            j = (i + 1) % n
+        for tri in roof_tris:
+            i0, i1, i2 = tri
             roof_verts.append([
-                [cx, height, cy],
-                [coords_m[i][0], height, coords_m[i][1]],
-                [coords_m[j][0], height, coords_m[j][1]]
+                [coords_m[i0][0], height, coords_m[i0][1]],
+                [coords_m[i1][0], height, coords_m[i1][1]],
+                [coords_m[i2][0], height, coords_m[i2][1]]
             ])
         roof_info = roof_features.get(bld_id, {"base_color": "#6b7280", "features": []})
 
