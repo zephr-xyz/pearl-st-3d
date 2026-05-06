@@ -1142,30 +1142,38 @@ const terrainGeom = new THREE.PlaneGeometry(
   tW - 1, tH - 1
 );
 const posAttr = terrainGeom.attributes.position;
+// Reverse row order: PlaneGeometry row 0 maps to -Z after rotation,
+// but data row 0 is north (should be +Z). Flip rows so mesh matches world.
 for (let i = 0; i < posAttr.count; i++) {
-  const elev = terrain.elevations[i] - baseElev;
+  const meshRow = Math.floor(i / tW);
+  const meshCol = i % tW;
+  const dataRow = tH - 1 - meshRow;
+  const dataIdx = dataRow * tW + meshCol;
+  const elev = terrain.elevations[dataIdx] - baseElev;
   posAttr.setZ(i, elev);
 }
 posAttr.needsUpdate = true;
 terrainGeom.computeVertexNormals();
 
-// NAIP-derived vertex colors with brightness boost for visibility
+// NAIP-derived vertex colors (also row-reversed)
 const terrainColors = new Float32Array(posAttr.count * 3);
 const hasColors = terrain.colors && terrain.colors.length >= posAttr.count * 3;
 for (let i = 0; i < posAttr.count; i++) {
+  const meshRow = Math.floor(i / tW);
+  const meshCol = i % tW;
+  const dataRow = tH - 1 - meshRow;
+  const dataIdx = dataRow * tW + meshCol;
   let r, g, b;
   if (hasColors) {
-    r = terrain.colors[i * 3] / 255;
-    g = terrain.colors[i * 3 + 1] / 255;
-    b = terrain.colors[i * 3 + 2] / 255;
-    // Boost brightness and saturation for cartographic clarity
-    const lum = r * 0.3 + g * 0.59 + b * 0.11;
+    r = terrain.colors[dataIdx * 3] / 255;
+    g = terrain.colors[dataIdx * 3 + 1] / 255;
+    b = terrain.colors[dataIdx * 3 + 2] / 255;
     const boost = 1.4;
     r = Math.min(1, r * boost + 0.05);
     g = Math.min(1, g * boost + 0.05);
     b = Math.min(1, b * boost + 0.03);
   } else {
-    const elev = terrain.elevations[i] - baseElev;
+    const elev = terrain.elevations[dataIdx] - baseElev;
     const t = Math.min(elev / 1000, 1);
     r = 0.75 + t * 0.1; g = 0.8 - t * 0.15; b = 0.7 - t * 0.2;
   }
