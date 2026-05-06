@@ -412,6 +412,56 @@ def main():
             angle = 0
         street_labels.append({"name": name, "x": mx, "y": my, "angle": angle})
 
+    # Process ground features: clip to scene extent, convert to meters
+    # Scene extent from buildings (with margin)
+    all_x = [c[0] for b in buildings for c in b["footprint_m"]]
+    all_y = [c[1] for b in buildings for c in b["footprint_m"]]
+    margin = 100
+    min_x, max_x = min(all_x) - margin, max(all_x) + margin
+    min_y, max_y = min(all_y) - margin, max(all_y) + margin
+
+    # Convert scene bounds back to lat/lon for clipping
+    min_lon = min_x / m_lng_at(ref_lat) + ref_lon
+    max_lon = max_x / m_lng_at(ref_lat) + ref_lon
+    min_lat = min_y / METERS_PER_DEG_LAT + ref_lat
+    max_lat = max_y / METERS_PER_DEG_LAT + ref_lat
+
+    processed_ground = []
+    for feat in ground_features:
+        geom = feat["geometry"]
+        polygons = []
+        if geom["type"] == "MultiPolygon":
+            polygons = [ring[0] for ring in geom["coordinates"]]
+        elif geom["type"] == "Polygon":
+            polygons = [geom["coordinates"][0]]
+
+        for ring in polygons:
+            # Quick bbox check
+            ring_lons = [c[0] for c in ring]
+            ring_lats = [c[1] for c in ring]
+            if max(ring_lons) < min_lon or min(ring_lons) > max_lon:
+                continue
+            if max(ring_lats) < min_lat or min(ring_lats) > max_lat:
+                continue
+
+            # Convert to meters
+            pts_m = [latlon_to_meters(c[1], c[0], ref_lat, ref_lon) for c in ring]
+            # Clip points within bounds
+            pts_clipped = [(x, y) for x, y in pts_m if min_x <= x <= max_x and min_y <= y <= max_y]
+            if len(pts_clipped) < 3:
+                continue
+
+            # Compute area
+            area = abs(polygon_area_signed(pts_clipped))
+            if area < 5:
+                continue
+
+            processed_ground.append({
+                "subtype": feat.get("subtype", "unknown"),
+                "points": pts_clipped,
+                "area": area,
+            })
+
     scene = {
         "ref_lat": ref_lat,
         "ref_lon": ref_lon,
@@ -421,7 +471,7 @@ def main():
         "benches": benches,
         "bike_racks": bike_racks,
         "street_labels": street_labels,
-        "ground_features": ground_features,
+        "ground_features": processed_ground,
     }
 
     with open(f"{OUTPUT_DIR}/scene.json", "w") as f:
