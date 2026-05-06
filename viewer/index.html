@@ -104,9 +104,9 @@ const textureLoader = new THREE.TextureLoader();
 
 // Scene setup
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xf2e8dc, 200, 600);
+scene.fog = new THREE.Fog(0xf2e8dc, 500, 5000);
 
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 1000);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 8000);
 camera.position.set(90, 35, -55);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -124,7 +124,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.maxPolarAngle = Math.PI / 2.05;
 controls.minDistance = 5;
-controls.maxDistance = 400;
+controls.maxDistance = 3000;
 
 // Lighting — soft, even illumination (Mapbox-style flat clarity)
 const ambient = new THREE.HemisphereLight(0xffffff, 0xe8e0d8, 0.9);
@@ -1101,6 +1101,64 @@ for (const label of (data.street_labels || [])) {
   mesh.position.set(label.x, 0.08, label.y);
   scene.add(mesh);
 }
+
+// Terrain — background mountains from elevation tiles
+const terrainResp = await fetch('terrain.json');
+const terrain = await terrainResp.json();
+
+const tW = terrain.width, tH = terrain.height;
+const baseElev = terrain.base_elevation;
+const cosLat = Math.cos(terrain.ref_lat * Math.PI / 180);
+const mPerDegLat = 111320;
+const mPerDegLon = 111320 * cosLat;
+
+const terrainGeom = new THREE.PlaneGeometry(
+  (terrain.se_lon - terrain.nw_lon) * mPerDegLon,
+  (terrain.nw_lat - terrain.se_lat) * mPerDegLat,
+  tW - 1, tH - 1
+);
+const posAttr = terrainGeom.attributes.position;
+for (let i = 0; i < posAttr.count; i++) {
+  const elev = terrain.elevations[i] - baseElev;
+  posAttr.setZ(i, elev);
+}
+posAttr.needsUpdate = true;
+terrainGeom.computeVertexNormals();
+
+// Color terrain by elevation: green lowlands → brown → gray rock
+const terrainColors = new Float32Array(posAttr.count * 3);
+for (let i = 0; i < posAttr.count; i++) {
+  const elev = terrain.elevations[i] - baseElev;
+  const t = Math.min(elev / 1000, 1);
+  let r, g, b;
+  if (t < 0.15) {
+    r = 0.82; g = 0.85; b = 0.76;
+  } else if (t < 0.4) {
+    const s = (t - 0.15) / 0.25;
+    r = 0.82 - s * 0.15; g = 0.85 - s * 0.2; b = 0.76 - s * 0.2;
+  } else {
+    const s = (t - 0.4) / 0.6;
+    r = 0.67 + s * 0.1; g = 0.65 + s * 0.05; b = 0.56 + s * 0.1;
+  }
+  terrainColors[i * 3] = r;
+  terrainColors[i * 3 + 1] = g;
+  terrainColors[i * 3 + 2] = b;
+}
+terrainGeom.setAttribute('color', new THREE.BufferAttribute(terrainColors, 3));
+
+const terrainMat = new THREE.MeshStandardMaterial({
+  vertexColors: true, roughness: 0.95, metalness: 0,
+  side: THREE.DoubleSide, flatShading: true
+});
+const terrainMesh = new THREE.Mesh(terrainGeom, terrainMat);
+terrainMesh.rotation.x = -Math.PI / 2;
+
+// Position terrain so scene center aligns
+const centerOffX = (terrain.ref_lon - (terrain.nw_lon + terrain.se_lon) / 2) * mPerDegLon;
+const centerOffZ = ((terrain.nw_lat + terrain.se_lat) / 2 - terrain.ref_lat) * mPerDegLat;
+terrainMesh.position.set(-centerOffX, -0.1, centerOffZ);
+terrainMesh.receiveShadow = true;
+scene.add(terrainMesh);
 
 // Mode buttons
 function setMode(mode) {
