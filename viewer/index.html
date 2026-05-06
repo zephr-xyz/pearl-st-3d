@@ -18,7 +18,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
 #panel .subtitle { font-size: 12px; color: #6b7280; margin-bottom: 14px; }
 #panel .stat-row { display: flex; gap: 12px; margin: 10px 0; }
 #panel .stat { text-align: center; flex: 1; }
-#panel .stat-num { font-size: 22px; font-weight: 700; color: #4f46e5; }
+#panel .stat-num { font-size: 22px; font-weight: 700; color: #3b82f6; }
 #panel .stat-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
 
 .legend { margin-top: 12px; border-top: 1px solid #f3f4f6; padding-top: 10px; }
@@ -37,7 +37,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
   font-weight: 500; color: #374151; transition: all 0.15s;
 }
 #controls button:hover { background: #eef2ff; }
-#controls button.active { background: #4f46e5; color: #fff; }
+#controls button.active { background: #3b82f6; color: #fff; }
 #controls .section-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 0 4px; }
 
 #tooltip {
@@ -47,7 +47,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
   box-shadow: 0 4px 16px rgba(0,0,0,0.3); backdrop-filter: blur(8px);
   line-height: 1.5;
 }
-#tooltip strong { color: #a5b4fc; }
+#tooltip strong { color: #93c5fd; }
 #tooltip .tag {
   display: inline-block; padding: 2px 6px; border-radius: 4px;
   font-size: 10px; font-weight: 600; margin-top: 4px;
@@ -104,7 +104,7 @@ const textureLoader = new THREE.TextureLoader();
 
 // Scene setup
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xe8ecf0, 150, 500);
+scene.fog = new THREE.Fog(0xf2e8dc, 200, 600);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 1000);
 camera.position.set(90, 35, -55);
@@ -115,7 +115,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.6;
+renderer.toneMappingExposure = 1.8;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const controls = new OrbitControls(camera, canvas);
@@ -126,12 +126,12 @@ controls.maxPolarAngle = Math.PI / 2.05;
 controls.minDistance = 5;
 controls.maxDistance = 400;
 
-// Lighting — bright midday, minimal shadows
-const ambient = new THREE.HemisphereLight(0xffffff, 0xb0c4de, 0.7);
+// Lighting — soft, even illumination (Mapbox-style flat clarity)
+const ambient = new THREE.HemisphereLight(0xffffff, 0xe8e0d8, 0.9);
 scene.add(ambient);
 
-const sun = new THREE.DirectionalLight(0xffffff, 1.4);
-sun.position.set(30, 80, 40);
+const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(40, 100, 50);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
 sun.shadow.camera.left = -200;
@@ -141,43 +141,19 @@ sun.shadow.camera.bottom = -200;
 sun.shadow.bias = -0.0001;
 scene.add(sun);
 
-const fill = new THREE.DirectionalLight(0xddeeff, 0.6);
-fill.position.set(-30, 20, -20);
+const fill = new THREE.DirectionalLight(0xf0f0ff, 0.5);
+fill.position.set(-40, 30, -30);
 scene.add(fill);
 
-const back = new THREE.DirectionalLight(0xffeedd, 0.3);
-back.position.set(-10, 30, -40);
+const back = new THREE.DirectionalLight(0xfff8f0, 0.3);
+back.position.set(-10, 40, -50);
 scene.add(back);
 
 // Ground plane
-// Ground plane with procedural urban texture
-const groundCanvas = document.createElement('canvas');
-groundCanvas.width = 512; groundCanvas.height = 512;
-const gCtx = groundCanvas.getContext('2d');
-gCtx.fillStyle = '#b8ad9e';
-gCtx.fillRect(0, 0, 512, 512);
-// Add subtle noise/variation for realism
-for (let i = 0; i < 3000; i++) {
-  const x = Math.random() * 512, y = Math.random() * 512;
-  const shade = 160 + Math.floor(Math.random() * 30);
-  gCtx.fillStyle = `rgb(${shade},${shade-8},${shade-16})`;
-  gCtx.fillRect(x, y, 2 + Math.random() * 3, 2 + Math.random() * 3);
-}
-// Grid lines (faint block/lot boundaries)
-gCtx.strokeStyle = 'rgba(140,130,120,0.15)';
-gCtx.lineWidth = 1;
-for (let x = 0; x < 512; x += 64) { gCtx.beginPath(); gCtx.moveTo(x, 0); gCtx.lineTo(x, 512); gCtx.stroke(); }
-for (let y = 0; y < 512; y += 64) { gCtx.beginPath(); gCtx.moveTo(0, y); gCtx.lineTo(512, y); gCtx.stroke(); }
-
-const groundTex = new THREE.CanvasTexture(groundCanvas);
-groundTex.wrapS = THREE.RepeatWrapping;
-groundTex.wrapT = THREE.RepeatWrapping;
-groundTex.repeat.set(12, 12);
-groundTex.colorSpace = THREE.SRGBColorSpace;
-
+// Ground plane — Mapbox Streets warm cream land
 const groundGeom = new THREE.PlaneGeometry(600, 600);
 const groundMat = new THREE.MeshStandardMaterial({
-  map: groundTex, roughness: 0.9, metalness: 0,
+  color: 0xf2e8dc, roughness: 0.95, metalness: 0,
   polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4
 });
 const ground = new THREE.Mesh(groundGeom, groundMat);
@@ -186,8 +162,8 @@ ground.position.y = -0.05;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// Sky gradient via background
-scene.background = new THREE.Color(0xe8ecf0);
+// Sky — light warm tone matching Mapbox land
+scene.background = new THREE.Color(0xf2e8dc);
 
 // Load scene data
 const resp = await fetch('scene.json');
@@ -234,8 +210,8 @@ function createProceduralFacade(style, wall) {
     return false;
   }
 
-  // === BASE WALL ===
-  ctx.fillStyle = style.color || '#8B7355';
+  // === BASE WALL === (Mapbox building fill #D9D3C8 for generic)
+  ctx.fillStyle = style.color || '#D9D3C8';
   ctx.fillRect(0, 0, W, H);
 
   // Material texture
@@ -532,13 +508,13 @@ function createBuilding(bld, mode) {
 
     if (mode === 'wireframe') {
       material = new THREE.MeshBasicMaterial({
-        color: wall.is_exterior ? 0x4f46e5 : 0x9ca3af,
+        color: wall.is_exterior ? 0x3b82f6 : 0xc9bdb1,
         wireframe: true, opacity: wall.is_exterior ? 0.6 : 0.3, transparent: true,
         side: THREE.DoubleSide
       });
     } else if (!wall.is_exterior) {
       material = new THREE.MeshStandardMaterial({
-        color: 0x4a4a4a, roughness: 0.95, metalness: 0,
+        color: 0xc9bdb1, roughness: 0.95, metalness: 0,
         side: THREE.DoubleSide
       });
     } else if (mode === 'textured' || mode === 'color') {
@@ -621,13 +597,13 @@ function createBuilding(bld, mode) {
   let roofMat;
   if (mode === 'wireframe') {
     roofMat = new THREE.MeshBasicMaterial({
-      color: bld.has_mapillary ? 0x4f46e5 : 0xd97706,
+      color: bld.has_mapillary ? 0x3b82f6 : 0xc9bdb1,
       wireframe: true, opacity: 0.6, transparent: true,
       side: THREE.DoubleSide
     });
   } else {
     roofMat = new THREE.MeshStandardMaterial({
-      color: bld.roof_color || '#6b7280',
+      color: bld.roof_color || '#d9d3c8',
       roughness: 0.85, metalness: 0.05,
       side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
@@ -789,15 +765,16 @@ function rebuildScene(mode) {
 rebuildScene('textured');
 
 // Ground features — Overture land_use/land_cover polygons
+// Mapbox Streets v12 land use palette
 const groundFeatureColors = {
-  park: 0x5a9a4a, recreation: 0x6aaa5a, managed: 0x7ab56a,
-  horticulture: 0x4d8c3d, education: 0xb8a88a, religious: 0xc4b89a,
-  developed: 0xa09080, protected: 0x5a8a4a,
-  grass: 0x6ab05a, forest: 0x3a6a2a, urban: 0x908070, crop: 0x9ab060
+  park: 0xb8e6b8, recreation: 0xb8e6b8, managed: 0xe0e8d8,
+  horticulture: 0xc8e6c0, education: 0xf0e8d8, religious: 0xf0e8d8,
+  developed: 0xe8e0d4, protected: 0xc8e6c0,
+  grass: 0xe0e8d8, forest: 0xbada80, urban: 0xe8e0d4, crop: 0xe0e8d8
 };
 const groundFeatureRoughness = {
-  park: 0.95, recreation: 0.92, managed: 0.95, horticulture: 0.95,
-  education: 0.8, religious: 0.75, developed: 0.7
+  park: 0.95, recreation: 0.95, managed: 0.95, horticulture: 0.95,
+  education: 0.85, religious: 0.85, developed: 0.8
 };
 
 function triangulatePoly(pts) {
@@ -854,7 +831,7 @@ for (const feat of (data.ground_features || [])) {
     if (tufts.length > 0) {
       const tGeom = new THREE.BufferGeometry();
       tGeom.setAttribute('position', new THREE.Float32BufferAttribute(tufts, 3));
-      const tMat = new THREE.PointsMaterial({ color: 0x3a7a2a, size: 0.6, sizeAttenuation: true });
+      const tMat = new THREE.PointsMaterial({ color: 0x7ab87a, size: 0.5, sizeAttenuation: true });
       const tPoints = new THREE.Points(tGeom, tMat);
       scene.add(tPoints);
     }
@@ -862,7 +839,8 @@ for (const feat of (data.ground_features || [])) {
 }
 
 // Roads — rendered as flat quads
-const roadColors = { tertiary: 0x4a4a4a, residential: 0x5a5a5a, footway: 0xd4c4a8, pedestrian: 0xddd0b8, service: 0x6a6a6a };
+// Mapbox Streets — white roads, warm-toned pedestrian areas
+const roadColors = { tertiary: 0xffffff, residential: 0xffffff, primary: 0xffffff, footway: 0xf0ebe0, pedestrian: 0xf5f0e8, service: 0xf8f8f8 };
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 1.5 : 2.5) / 2;
@@ -894,8 +872,8 @@ for (const road of (data.roads || [])) {
 }
 
 // Sidewalks — elevated concrete surfaces alongside vehicular roads
-const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xc8c0b4, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
-const curbMat = new THREE.MeshStandardMaterial({ color: 0x999590, roughness: 0.7, metalness: 0, side: THREE.DoubleSide });
+const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xe8e2da, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+const curbMat = new THREE.MeshStandardMaterial({ color: 0xc9bdb1, roughness: 0.8, metalness: 0, side: THREE.DoubleSide });
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   if (road.class === 'footway' || road.class === 'pedestrian' || road.class === 'service') continue;
@@ -955,8 +933,8 @@ for (const road of (data.roads || [])) {
 }
 
 // Trees — varied deciduous with multi-cluster canopy
-const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a2e12, roughness: 0.95 });
-const canopyColors = [0x2d6b2d, 0x3a7a3a, 0x4a8a3a, 0x357035, 0x2a5a2a, 0x3d7a4d];
+const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 });
+const canopyColors = [0x7ac07a, 0x6db86d, 0x80c880, 0x5aaa5a, 0x70b870, 0x88cc88];
 for (const tree of (data.trees || [])) {
   const seed = Math.abs(tree.x * 7 + tree.y * 13) | 0;
   const scale = 0.7 + (seed % 10) / 15;
@@ -987,7 +965,7 @@ for (const tree of (data.trees || [])) {
 }
 
 // Benches — seat + backrest + metal frame
-const benchWoodMat = new THREE.MeshStandardMaterial({ color: 0x8b5e3c, roughness: 0.75 });
+const benchWoodMat = new THREE.MeshStandardMaterial({ color: 0xa08060, roughness: 0.8 });
 const benchMetalMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 });
 for (const bench of (data.benches || [])) {
   const bGroup = new THREE.Group();
@@ -1052,7 +1030,7 @@ for (const rack of (data.bike_racks || [])) {
 }
 
 // Street lamps — placed on sidewalks alongside roads
-const lampPoleMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.3, metalness: 0.8 });
+const lampPoleMat = new THREE.MeshStandardMaterial({ color: 0x5a5a5a, roughness: 0.4, metalness: 0.6 });
 const lampGlowMat = new THREE.MeshStandardMaterial({ color: 0xfff8e0, emissive: 0xfff0c0, emissiveIntensity: 0.3, roughness: 0.2 });
 for (const road of (data.roads || [])) {
   if (road.class !== 'tertiary' && road.class !== 'residential' && road.class !== 'primary') continue;
