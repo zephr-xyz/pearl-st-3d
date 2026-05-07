@@ -1351,13 +1351,12 @@ console.log('Signs loaded:', signsData.length);
   console.log('Signs rendered:', signCount);
 }
 
-// Ground features — Overture land_use/land_cover polygons
-// Mapbox Streets v12 land use palette
+// Ground features — NAIP + VLM-informed palette
 const groundFeatureColors = {
-  park: 0xb8e6b8, recreation: 0xb8e6b8, managed: 0xe0e8d8,
-  horticulture: 0xc8e6c0, education: 0xf0e8d8, religious: 0xf0e8d8,
-  developed: 0xe8e0d4, protected: 0xc8e6c0,
-  grass: 0xe0e8d8, forest: 0xbada80, urban: 0xe8e0d4, crop: 0xe0e8d8
+  park: 0x4a8a3a, recreation: 0x5a9a4a, managed: 0x6aaa5a,
+  horticulture: 0x5a9848, education: 0xd4c8b0, religious: 0xd4c8b0,
+  developed: 0xc8b8a0, protected: 0x5a9a50,
+  grass: 0x5a9a48, forest: 0x3a7a30, urban: 0xc4b8a0, crop: 0x6aaa5a
 };
 const groundFeatureRoughness = {
   park: 0.95, recreation: 0.95, managed: 0.95, horticulture: 0.95,
@@ -1417,7 +1416,7 @@ for (const feat of (data.ground_features || [])) {
     if (tufts.length > 0) {
       const tGeom = new THREE.BufferGeometry();
       tGeom.setAttribute('position', new THREE.Float32BufferAttribute(tufts, 3));
-      const tMat = new THREE.PointsMaterial({ color: 0x7ab87a, size: 0.5, sizeAttenuation: true });
+      const tMat = new THREE.PointsMaterial({ color: 0x4a9a3a, size: 0.5, sizeAttenuation: true });
       const tPoints = new THREE.Points(tGeom, tMat);
       scene.add(tPoints);
     }
@@ -1426,7 +1425,7 @@ for (const feat of (data.ground_features || [])) {
 
 // Roads — rendered as flat quads
 // Mapbox Streets — white roads, warm-toned pedestrian areas
-const roadColors = { tertiary: 0xffffff, residential: 0xffffff, primary: 0xffffff, footway: 0xf0ebe0, pedestrian: 0xf5f0e8, service: 0xf8f8f8 };
+const roadColors = { tertiary: 0x404040, residential: 0x484848, primary: 0x383838, footway: 0xc8b8a0, pedestrian: 0xa0614a, service: 0x505050 };
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 1.5 : 2.5) / 2;
@@ -1460,8 +1459,8 @@ for (const road of (data.roads || [])) {
 }
 
 // Sidewalks — elevated concrete surfaces alongside vehicular roads
-const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xe8e2da, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
-const curbMat = new THREE.MeshStandardMaterial({ color: 0xc9bdb1, roughness: 0.8, metalness: 0, side: THREE.DoubleSide });
+const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xc8c0b4, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+const curbMat = new THREE.MeshStandardMaterial({ color: 0x989088, roughness: 0.8, metalness: 0, side: THREE.DoubleSide });
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   if (road.class === 'footway' || road.class === 'pedestrian' || road.class === 'service') continue;
