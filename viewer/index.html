@@ -940,12 +940,12 @@ console.log('Signs loaded:', signsData.length);
     const floorH = h / stories;
     const signY = floorH * 0.82;
 
-    // Outward normal
+    // Outward normal — must point AWAY from building centroid
     const wallMx = x0 + 0.5 * dx, wallMz = z0 + 0.5 * dz;
     const bcx = bld.centroid_m[0], bcz = bld.centroid_m[1];
     let nx = -dz / len, nz = dx / len;
     const dot = nx * (bcx - wallMx) + nz * (bcz - wallMz);
-    if (dot > 0) { nx = -nx; nz = -nz; }
+    if (dot < 0) { nx = -nx; nz = -nz; }
 
     const offset = 0.3;
     const px = x0 + 0.5 * dx + nx * offset;
