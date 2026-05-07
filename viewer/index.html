@@ -947,37 +947,25 @@ console.log('Signs loaded:', signsData.length);
     const dot = nx * (bcx - wallMx) + nz * (bcz - wallMz);
     if (dot > 0) { nx = -nx; nz = -nz; }
 
-    const offset = 0.25;
-    const cx = x0 + 0.5 * dx + nx * offset;
-    const cz = z0 + 0.5 * dz + nz * offset;
-    const rx = dx / len, rz = dz / len;
-    const hw = signW / 2, hh = SIGN_H / 2;
+    const offset = 0.3;
+    const px = x0 + 0.5 * dx + nx * offset;
+    const pz = z0 + 0.5 * dz + nz * offset;
+    const terrainY = getTerrainElevation(bld.centroid_m[0], bld.centroid_m[1]);
+    const py = terrainY + signY;
 
-    const pos = new Float32Array([
-      cx - rx * hw, signY - hh, cz - rz * hw,
-      cx + rx * hw, signY - hh, cz + rz * hw,
-      cx + rx * hw, signY + hh, cz + rz * hw,
-      cx - rx * hw, signY - hh, cz - rz * hw,
-      cx + rx * hw, signY + hh, cz + rz * hw,
-      cx - rx * hw, signY + hh, cz - rz * hw,
-    ]);
-    const uvs = new Float32Array([1,0, 0,0, 0,1, 1,0, 0,1, 1,1]);
-
-    const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-    geom.computeVertexNormals();
-
+    const geom = new THREE.PlaneGeometry(signW, SIGN_H);
     const tex = createSignTexture(sign.name);
     const mat = new THREE.MeshBasicMaterial({
-      map: tex, side: THREE.DoubleSide,
-      transparent: true, depthWrite: false,
-      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
+      map: tex, side: THREE.DoubleSide
     });
 
     const mesh = new THREE.Mesh(geom, mat);
-    mesh.position.y = getTerrainElevation(bld.centroid_m[0], bld.centroid_m[1]);
-    mesh.renderOrder = 999;
+    mesh.position.set(px, py, pz);
+
+    // Rotate to align with wall direction and face outward
+    const angle = Math.atan2(dx, dz);
+    mesh.rotation.y = angle;
+
     scene.add(mesh);
     signCount++;
   }
