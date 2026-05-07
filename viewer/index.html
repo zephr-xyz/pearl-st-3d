@@ -947,7 +947,7 @@ const signsData = await signsResp.json();
       cx + right_x * hw, signY + hh, cz + right_z * hw,
       cx - right_x * hw, signY + hh, cz - right_z * hw,
     ]);
-    const uvs = new Float32Array([0,0, 1,0, 1,1, 0,0, 1,1, 0,1]);
+    const uvs = new Float32Array([1,0, 0,0, 0,1, 1,0, 0,1, 1,1]);
 
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
