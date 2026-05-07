@@ -1651,36 +1651,8 @@ for (let i = 0; i < posAttr.count; i++) {
 posAttr.needsUpdate = true;
 terrainGeom.computeVertexNormals();
 
-// NAIP-derived vertex colors (also row-reversed)
-const terrainColors = new Float32Array(posAttr.count * 3);
-const hasColors = terrain.colors && terrain.colors.length >= posAttr.count * 3;
-for (let i = 0; i < posAttr.count; i++) {
-  const meshRow = Math.floor(i / tW);
-  const meshCol = i % tW;
-  const dataRow = tH - 1 - meshRow;
-  const dataIdx = dataRow * tW + meshCol;
-  let r, g, b;
-  if (hasColors) {
-    r = terrain.colors[dataIdx * 3] / 255;
-    g = terrain.colors[dataIdx * 3 + 1] / 255;
-    b = terrain.colors[dataIdx * 3 + 2] / 255;
-    const boost = 1.4;
-    r = Math.min(1, r * boost + 0.05);
-    g = Math.min(1, g * boost + 0.05);
-    b = Math.min(1, b * boost + 0.03);
-  } else {
-    const elev = terrain.elevations[dataIdx] - baseElev;
-    const t = Math.min(elev / 1000, 1);
-    r = 0.75 + t * 0.1; g = 0.8 - t * 0.15; b = 0.7 - t * 0.2;
-  }
-  terrainColors[i * 3] = r;
-  terrainColors[i * 3 + 1] = g;
-  terrainColors[i * 3 + 2] = b;
-}
-terrainGeom.setAttribute('color', new THREE.BufferAttribute(terrainColors, 3));
-
 const terrainMat = new THREE.MeshStandardMaterial({
-  vertexColors: true, roughness: 0.8, metalness: 0,
+  color: 0x8a8580, roughness: 0.95, metalness: 0,
   side: THREE.DoubleSide
 });
 const terrainMesh = new THREE.Mesh(terrainGeom, terrainMat);
