@@ -876,6 +876,10 @@ const signsData = await signsResp.json();
     return tex;
   }
 
+  // Fixed sign dimensions (meters)
+  const SIGN_W = 2.4;
+  const SIGN_H = 0.6;
+
   let signCount = 0;
   for (const sign of signsData) {
     if (!sign.name) continue;
@@ -885,7 +889,7 @@ const signsData = await signsResp.json();
     const sx = (sign.lon - data.ref_lon) * mPerDegLon;
     const sz = (sign.lat - data.ref_lat) * mPerDegLat;
 
-    // Find closest wall
+    // Find closest wall on THIS building only
     let bestWall = null, bestDist = Infinity;
     for (const wall of bld.walls) {
       const v = wall.vertices;
@@ -903,25 +907,38 @@ const signsData = await signsResp.json();
     const len = Math.sqrt(dx * dx + dz * dz);
     if (len < 2) continue;
 
+    // Clamp sign width to wall length with padding
+    const signW = Math.min(SIGN_W, len - 0.5);
+    if (signW < 0.5) continue;
+
+    // Project sign position onto wall, clamp so sign stays within wall bounds
     let t = ((sx - x0) * dx + (sz - z0) * dz) / (dx * dx + dz * dz);
-    t = Math.max(0.15, Math.min(0.85, t));
+    const halfW_t = (signW / 2) / len;
+    t = Math.max(halfW_t + 0.02, Math.min(1 - halfW_t - 0.02, t));
 
-    const signW = Math.min(len * 0.4, 3.0);
-    const signH = signW * 0.25;
-    const signY = h * 0.72;
+    // Sign Y position: just above ground floor (at signage band level)
+    // For multi-story buildings, ground floor top is at h * (stories-1)/stories
+    const stories = bld.style?.stories || Math.max(1, Math.round(h / 3.5));
+    const floorH = h / stories;
+    // Place sign at top of ground floor, aligned with signage band
+    const signY = h - floorH + floorH * 0.15;
 
-    // Outward normal — pick direction pointing away from building centroid
+    // Outward normal — pointing AWAY from building centroid
     const wallMx = x0 + 0.5 * dx, wallMz = z0 + 0.5 * dz;
     const bcx = bld.centroid_m[0], bcz = bld.centroid_m[1];
     let nx = -dz / len, nz = dx / len;
+    // Flip: if this candidate points TOWARD centroid, reverse it
     if (nx * (bcx - wallMx) + nz * (bcz - wallMz) > 0) { nx = -nx; nz = -nz; }
+    // Invert once more since the previous logic was producing inward-facing
+    nx = -nx; nz = -nz;
 
-    const offset = 0.3;
+    const offset = 0.15;
     const cx = x0 + t * dx + nx * offset;
     const cz = z0 + t * dz + nz * offset;
     const right_x = dx / len, right_z = dz / len;
-    const hw = signW / 2, hh = signH / 2;
+    const hw = signW / 2, hh = SIGN_H / 2;
 
+    // Triangle pair forming sign quad — vertex order gives outward-facing normal
     const positions = new Float32Array([
       cx - right_x * hw, signY - hh, cz - right_z * hw,
       cx + right_x * hw, signY - hh, cz + right_z * hw,
