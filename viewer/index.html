@@ -916,12 +916,11 @@ const signsData = await signsResp.json();
     const halfW_t = (signW / 2) / len;
     t = Math.max(halfW_t + 0.02, Math.min(1 - halfW_t - 0.02, t));
 
-    // Sign Y position: just above ground floor (at signage band level)
-    // For multi-story buildings, ground floor top is at h * (stories-1)/stories
+    // Sign Y position: top of ground floor, aligned with signage band/awnings
     const stories = bld.style?.stories || Math.max(1, Math.round(h / 3.5));
     const floorH = h / stories;
-    // Place sign at top of ground floor, aligned with signage band
-    const signY = h - floorH + floorH * 0.15;
+    // Ground floor spans Y=0 to Y=floorH. Sign goes near top of ground floor.
+    const signY = floorH * 0.82;
 
     // Outward normal — pointing AWAY from building centroid
     const wallMx = x0 + 0.5 * dx, wallMz = z0 + 0.5 * dz;
