@@ -837,7 +837,10 @@ function rebuildScene(mode) {
 rebuildScene('textured');
 
 // Signs — procedurally rendered from SNIP-detected text
-fetch('signs.json').then(r => r.json()).then(signsData => {
+const signsResp = await fetch('signs.json');
+const signsData = await signsResp.json();
+
+{
   const mPerDegLat = 111320;
   const mPerDegLon = 111320 * Math.cos(data.ref_lat * Math.PI / 180);
 
@@ -873,17 +876,18 @@ fetch('signs.json').then(r => r.json()).then(signsData => {
     return tex;
   }
 
+  let signCount = 0;
   for (const sign of signsData) {
+    if (!sign.name) continue;
     const bld = bldMap[sign.building_id];
-    if (!bld) continue;
+    if (!bld || !bld.walls || bld.walls.length === 0) continue;
 
     const sx = (sign.lon - data.ref_lon) * mPerDegLon;
     const sz = (sign.lat - data.ref_lat) * mPerDegLat;
 
-    // Find closest exterior wall
+    // Find closest wall
     let bestWall = null, bestDist = Infinity;
     for (const wall of bld.walls) {
-      if (!wall.is_exterior) continue;
       const v = wall.vertices;
       const wx = (v[0][0] + v[1][0]) / 2;
       const wz = (v[0][2] + v[1][2]) / 2;
@@ -906,16 +910,13 @@ fetch('signs.json').then(r => r.json()).then(signsData => {
     const signH = signW * 0.25;
     const signY = h * 0.72;
 
-    // Outward normal — use bearing from scene data to determine direction
-    // Try both normal directions, pick the one pointing away from centroid
-    const mx = x0 + 0.5 * dx, mz = z0 + 0.5 * dz;
+    // Outward normal — pick direction pointing away from building centroid
+    const wallMx = x0 + 0.5 * dx, wallMz = z0 + 0.5 * dz;
     const bcx = bld.centroid_m[0], bcz = bld.centroid_m[1];
     let nx = -dz / len, nz = dx / len;
-    // If normal points toward centroid, flip it
-    const dot = nx * (bcx - mx) + nz * (bcz - mz);
-    if (dot > 0) { nx = -nx; nz = -nz; }
+    if (nx * (bcx - wallMx) + nz * (bcz - wallMz) > 0) { nx = -nx; nz = -nz; }
 
-    const offset = 0.25;
+    const offset = 0.3;
     const cx = x0 + t * dx + nx * offset;
     const cz = z0 + t * dz + nz * offset;
     const right_x = dx / len, right_z = dz / len;
@@ -939,8 +940,8 @@ fetch('signs.json').then(r => r.json()).then(signsData => {
     const tex = createSignTexture(sign.name);
     const mat = new THREE.MeshBasicMaterial({
       map: tex, side: THREE.DoubleSide,
-      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
-      depthTest: true, depthWrite: false
+      depthTest: true, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
     });
 
     const mesh = new THREE.Mesh(geom, mat);
@@ -948,8 +949,10 @@ fetch('signs.json').then(r => r.json()).then(signsData => {
     mesh.position.y = terrainY;
     mesh.renderOrder = 1;
     scene.add(mesh);
+    signCount++;
   }
-}).catch(e => console.warn('Signs failed:', e));
+  console.log(`Signs rendered: ${signCount}`);
+}
 
 // Ground features — Overture land_use/land_cover polygons
 // Mapbox Streets v12 land use palette
