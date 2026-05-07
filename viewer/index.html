@@ -876,24 +876,16 @@ const signsData = await signsResp.json();
     return tex;
   }
 
-  // Fixed sign dimensions (meters)
   const SIGN_W = 2.4;
   const SIGN_H = 0.6;
 
-  // Group signs by building, limit to 2 per building
-  const signsByBld = {};
+  let signCount = 0;
   for (const sign of signsData) {
     if (!sign.name) continue;
-    if (!signsByBld[sign.building_id]) signsByBld[sign.building_id] = [];
-    if (signsByBld[sign.building_id].length < 2) signsByBld[sign.building_id].push(sign);
-  }
-
-  let signCount = 0;
-  for (const [bldId, bldSigns] of Object.entries(signsByBld)) {
-    const bld = bldMap[bldId];
+    const bld = bldMap[sign.building_id];
     if (!bld || !bld.walls || bld.walls.length === 0) continue;
 
-    // Place signs on the longest wall (primary street-facing facade)
+    // Longest wall = primary street facade
     let bestWall = null;
     for (const wall of bld.walls) {
       if (!bestWall || wall.length > bestWall.length) bestWall = wall;
@@ -905,71 +897,57 @@ const signsData = await signsResp.json();
     const h = bestWall.height;
     const dx = x1 - x0, dz = z1 - z0;
     const len = Math.sqrt(dx * dx + dz * dz);
-    if (len < 2) continue;
+    if (len < 3) continue;
 
-    // Distribute signs evenly along the wall
-    const numSigns = bldSigns.length;
-    for (let si = 0; si < numSigns; si++) {
-    const sign = bldSigns[si];
+    const signW = Math.min(SIGN_W, len * 0.8);
+    const t = 0.5;
 
-    const signW = Math.min(SIGN_W, (len / numSigns) - 0.5);
-    if (signW < 0.5) continue;
-
-    // Evenly spaced t positions
-    const t = (si + 0.5) / numSigns;
-    const halfW_t = (signW / 2) / len;
-
-    // Sign Y position: top of ground floor, aligned with signage band/awnings
-    const stories = bld.style?.stories || Math.max(1, Math.round(h / 3.5));
+    // Sign at top of ground floor
+    const stories = bld.style && bld.style.stories ? bld.style.stories : Math.max(1, Math.round(h / 3.5));
     const floorH = h / stories;
-    // Ground floor spans Y=0 to Y=floorH. Sign goes near top of ground floor.
     const signY = floorH * 0.82;
 
-    // Outward normal — pointing AWAY from building centroid
+    // Outward normal
     const wallMx = x0 + 0.5 * dx, wallMz = z0 + 0.5 * dz;
     const bcx = bld.centroid_m[0], bcz = bld.centroid_m[1];
     let nx = -dz / len, nz = dx / len;
-    // Flip if this candidate points TOWARD centroid (so it faces outward)
     if (nx * (bcx - wallMx) + nz * (bcz - wallMz) > 0) { nx = -nx; nz = -nz; }
 
-    const offset = 0.15;
+    const offset = 0.2;
     const cx = x0 + t * dx + nx * offset;
     const cz = z0 + t * dz + nz * offset;
-    const right_x = dx / len, right_z = dz / len;
+    const rx = dx / len, rz = dz / len;
     const hw = signW / 2, hh = SIGN_H / 2;
 
-    // Triangle pair forming sign quad — vertex order gives outward-facing normal
-    const positions = new Float32Array([
-      cx - right_x * hw, signY - hh, cz - right_z * hw,
-      cx + right_x * hw, signY - hh, cz + right_z * hw,
-      cx + right_x * hw, signY + hh, cz + right_z * hw,
-      cx - right_x * hw, signY - hh, cz - right_z * hw,
-      cx + right_x * hw, signY + hh, cz + right_z * hw,
-      cx - right_x * hw, signY + hh, cz - right_z * hw,
+    const pos = new Float32Array([
+      cx - rx * hw, signY - hh, cz - rz * hw,
+      cx + rx * hw, signY - hh, cz + rz * hw,
+      cx + rx * hw, signY + hh, cz + rz * hw,
+      cx - rx * hw, signY - hh, cz - rz * hw,
+      cx + rx * hw, signY + hh, cz + rz * hw,
+      cx - rx * hw, signY + hh, cz - rz * hw,
     ]);
     const uvs = new Float32Array([1,0, 0,0, 0,1, 1,0, 0,1, 1,1]);
 
     const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geom.computeVertexNormals();
 
     const tex = createSignTexture(sign.name);
     const mat = new THREE.MeshBasicMaterial({
       map: tex, side: THREE.DoubleSide,
-      depthTest: true, depthWrite: false,
+      depthWrite: false,
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
     });
 
     const mesh = new THREE.Mesh(geom, mat);
-    const terrainY = getTerrainElevation(bld.centroid_m[0], bld.centroid_m[1]);
-    mesh.position.y = terrainY;
+    mesh.position.y = getTerrainElevation(bld.centroid_m[0], bld.centroid_m[1]);
     mesh.renderOrder = 1;
     scene.add(mesh);
     signCount++;
-    } // end inner for (si)
-  } // end for-of (bldSigns)
-  console.log(`Signs rendered: ${signCount}`);
+  }
+  console.log('Signs rendered: ' + signCount);
 }
 
 // Ground features — Overture land_use/land_cover polygons
