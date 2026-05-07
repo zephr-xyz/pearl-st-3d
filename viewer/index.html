@@ -54,6 +54,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
 }
 #tooltip .tag-direct { background: #059669; color: #fff; }
 #tooltip .tag-transfer { background: #d97706; color: #fff; }
+
+#loading-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: #0f172a;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: opacity 0.4s;
+}
+#loading-overlay.hidden { opacity: 0; pointer-events: none; }
+#loading-overlay h2 { color: #e2e8f0; font-size: 18px; font-weight: 600; margin-bottom: 20px; letter-spacing: -0.3px; }
+#loading-bar-track {
+  width: 260px; height: 6px; border-radius: 3px; background: #1e293b; overflow: hidden;
+}
+#loading-bar-fill {
+  height: 100%; width: 0%; border-radius: 3px;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width 0.3s ease;
+}
+#loading-status { color: #94a3b8; font-size: 12px; margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -83,6 +101,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
   <button id="btn-orbit">Orbit (default)</button>
 </div>
 
+<div id="loading-overlay">
+  <h2>Pearl Street 3D</h2>
+  <div id="loading-bar-track"><div id="loading-bar-fill"></div></div>
+  <div id="loading-status">Loading scene...</div>
+</div>
+
 <div id="tooltip"></div>
 <canvas id="canvas"></canvas>
 
@@ -101,6 +125,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const canvas = document.getElementById('canvas');
 const tooltip = document.getElementById('tooltip');
 const textureLoader = new THREE.TextureLoader();
+
+const loadingOverlay = document.getElementById('loading-overlay');
+const loadingFill = document.getElementById('loading-bar-fill');
+const loadingStatus = document.getElementById('loading-status');
+function setProgress(pct, msg) {
+  loadingFill.style.width = pct + '%';
+  loadingStatus.textContent = msg;
+}
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -199,12 +231,15 @@ skyTex.colorSpace = THREE.SRGBColorSpace;
 scene.background = skyTex;
 
 // Load scene data
+setProgress(10, 'Loading buildings...');
 const resp = await fetch('scene.json');
 const data = await resp.json();
+setProgress(40, 'Loading terrain...');
 
 // Load terrain for elevation lookup
 const terrainResp = await fetch('terrain.json');
 const terrain = await terrainResp.json();
+setProgress(55, 'Building 3D geometry...');
 const tW = terrain.width, tH = terrain.height;
 const baseElev = terrain.base_elevation;
 const cosLat = Math.cos(terrain.ref_lat * Math.PI / 180);
@@ -834,16 +869,16 @@ function rebuildScene(mode) {
   }
 }
 
+setProgress(75, 'Rendering facades...');
 rebuildScene('textured');
 
 // Signs — procedurally rendered from SNIP-detected text
+setProgress(85, 'Loading signs...');
 const signsResp = await fetch('signs.json');
 const signsData = await signsResp.json();
+console.log('Signs loaded:', signsData.length);
 
 {
-  const mPerDegLat = 111320;
-  const mPerDegLon = 111320 * Math.cos(data.ref_lat * Math.PI / 180);
-
   const bldMap = {};
   for (const bld of data.buildings) bldMap[bld.id] = bld;
 
@@ -852,58 +887,56 @@ const signsData = await signsResp.json();
     const W = 512, H = 128;
     cvs.width = W; cvs.height = H;
     const ctx = cvs.getContext('2d');
-
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, W, H);
-
     ctx.strokeStyle = '#d4c5a9';
     ctx.lineWidth = 3;
     ctx.strokeRect(6, 6, W - 12, H - 12);
-
     ctx.fillStyle = '#f5f0e0';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     let fontSize = 42;
-    ctx.font = `600 ${fontSize}px sans-serif`;
+    ctx.font = '600 ' + fontSize + 'px sans-serif';
     while (ctx.measureText(name).width > W - 40 && fontSize > 14) {
       fontSize -= 2;
-      ctx.font = `600 ${fontSize}px sans-serif`;
+      ctx.font = '600 ' + fontSize + 'px sans-serif';
     }
     ctx.fillText(name, W / 2, H / 2);
-
     const tex = new THREE.CanvasTexture(cvs);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   }
 
   const SIGN_W = 2.4;
-  const SIGN_H = 0.6;
+  const SIGN_H = 0.7;
 
   let signCount = 0;
-  for (const sign of signsData) {
+  for (let si = 0; si < signsData.length; si++) {
+    const sign = signsData[si];
     if (!sign.name) continue;
     const bld = bldMap[sign.building_id];
     if (!bld || !bld.walls || bld.walls.length === 0) continue;
 
     // Longest wall = primary street facade
     let bestWall = null;
-    for (const wall of bld.walls) {
-      if (!bestWall || wall.length > bestWall.length) bestWall = wall;
+    let bestLen = 0;
+    for (let wi = 0; wi < bld.walls.length; wi++) {
+      const wl = bld.walls[wi].length;
+      if (wl > bestLen) { bestLen = wl; bestWall = bld.walls[wi]; }
     }
-    if (!bestWall || bestWall.length < 3) continue;
+    if (!bestWall || bestLen < 3) continue;
 
     const v = bestWall.vertices;
     const x0 = v[0][0], z0 = v[0][2], x1 = v[1][0], z1 = v[1][2];
     const h = bestWall.height;
     const dx = x1 - x0, dz = z1 - z0;
     const len = Math.sqrt(dx * dx + dz * dz);
-    if (len < 3) continue;
+    if (len < 2) continue;
 
     const signW = Math.min(SIGN_W, len * 0.8);
-    const t = 0.5;
 
     // Sign at top of ground floor
-    const stories = bld.style && bld.style.stories ? bld.style.stories : Math.max(1, Math.round(h / 3.5));
+    const stories = (bld.style && bld.style.stories) ? bld.style.stories : Math.max(1, Math.round(h / 3.5));
     const floorH = h / stories;
     const signY = floorH * 0.82;
 
@@ -911,11 +944,12 @@ const signsData = await signsResp.json();
     const wallMx = x0 + 0.5 * dx, wallMz = z0 + 0.5 * dz;
     const bcx = bld.centroid_m[0], bcz = bld.centroid_m[1];
     let nx = -dz / len, nz = dx / len;
-    if (nx * (bcx - wallMx) + nz * (bcz - wallMz) > 0) { nx = -nx; nz = -nz; }
+    const dot = nx * (bcx - wallMx) + nz * (bcz - wallMz);
+    if (dot > 0) { nx = -nx; nz = -nz; }
 
-    const offset = 0.2;
-    const cx = x0 + t * dx + nx * offset;
-    const cz = z0 + t * dz + nz * offset;
+    const offset = 0.25;
+    const cx = x0 + 0.5 * dx + nx * offset;
+    const cz = z0 + 0.5 * dz + nz * offset;
     const rx = dx / len, rz = dz / len;
     const hw = signW / 2, hh = SIGN_H / 2;
 
@@ -937,17 +971,17 @@ const signsData = await signsResp.json();
     const tex = createSignTexture(sign.name);
     const mat = new THREE.MeshBasicMaterial({
       map: tex, side: THREE.DoubleSide,
-      depthWrite: false,
+      transparent: true, depthWrite: false,
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
     });
 
     const mesh = new THREE.Mesh(geom, mat);
     mesh.position.y = getTerrainElevation(bld.centroid_m[0], bld.centroid_m[1]);
-    mesh.renderOrder = 1;
+    mesh.renderOrder = 999;
     scene.add(mesh);
     signCount++;
   }
-  console.log('Signs rendered: ' + signCount);
+  console.log('Signs rendered:', signCount);
 }
 
 // Ground features — Overture land_use/land_cover polygons
@@ -1419,6 +1453,9 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+setProgress(100, 'Ready');
+setTimeout(() => loadingOverlay.classList.add('hidden'), 300);
 
 function animate() {
   requestAnimationFrame(animate);
