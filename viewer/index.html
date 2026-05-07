@@ -1428,7 +1428,7 @@ for (const feat of (data.ground_features || [])) {
 const roadColors = { tertiary: 0x404040, residential: 0x484848, primary: 0x383838, footway: 0x8b3a2a, pedestrian: 0x8b3a2a, service: 0x505050 };
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
-  const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 1.5 : 2.5) / 2;
+  const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 6 : 2.5) / 2;
   const color = roadColors[road.class] || 0x888888;
   const y = road.class === 'footway' || road.class === 'pedestrian' ? 0.04 : 0.02;
 
@@ -1458,97 +1458,6 @@ for (const road of (data.roads || [])) {
   scene.add(rMesh);
 }
 
-// Sidewalks — only on mid-segments of vehicular roads, trimmed at intersections
-// Collect road endpoint positions to detect intersections
-const roadEndpoints = [];
-for (const road of (data.roads || [])) {
-  if (road.points.length < 2) continue;
-  if (road.class === 'footway' || road.class === 'pedestrian' || road.class === 'service') continue;
-  roadEndpoints.push(road.points[0], road.points[road.points.length - 1]);
-}
-function nearIntersection(x, z, threshold) {
-  for (const ep of roadEndpoints) {
-    const dx = x - ep[0], dz = z - ep[1];
-    if (dx * dx + dz * dz < threshold * threshold) return true;
-  }
-  return false;
-}
-
-const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xc8c0b4, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, depthWrite: true });
-const curbMat = new THREE.MeshStandardMaterial({ color: 0x989088, roughness: 0.8, metalness: 0, side: THREE.DoubleSide });
-for (const road of (data.roads || [])) {
-  if (road.points.length < 2) continue;
-  if (road.class === 'footway' || road.class === 'pedestrian' || road.class === 'service') continue;
-
-  const roadHW = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'primary' ? 6 : 3) / 2;
-  const swWidth = 1.8;
-  const swY = -0.02;
-  const curbH = 0.08;
-  const gap = 0.3;
-  const trimDist = 6.0;
-
-  for (let side = -1; side <= 1; side += 2) {
-    const swVerts = [];
-    const curbVerts = [];
-    for (let i = 0; i < road.points.length - 1; i++) {
-      const [x0, z0] = road.points[i];
-      const [x1, z1] = road.points[i + 1];
-      const dx = x1 - x0, dz = z1 - z0;
-      const len = Math.sqrt(dx*dx + dz*dz);
-      if (len < 0.3) continue;
-
-      // Skip segments near intersections
-      const midX = (x0 + x1) / 2, midZ = (z0 + z1) / 2;
-      if (nearIntersection(x0, z0, trimDist) && nearIntersection(x1, z1, trimDist)) continue;
-
-      const nx = -dz / len, nz = dx / len;
-      const innerOff = roadHW + gap;
-      const outerOff = roadHW + gap + swWidth;
-
-      // Trim start/end if near intersection
-      let t0 = 0, t1 = 1;
-      if (nearIntersection(x0, z0, trimDist)) t0 = Math.min(0.4, trimDist / len);
-      if (nearIntersection(x1, z1, trimDist)) t1 = Math.max(0.6, 1 - trimDist / len);
-      if (t0 >= t1) continue;
-
-      const sx0 = x0 + dx * t0, sz0 = z0 + dz * t0;
-      const sx1 = x0 + dx * t1, sz1 = z0 + dz * t1;
-
-      const ix0 = sx0 + nx * innerOff * side, iz0 = sz0 + nz * innerOff * side;
-      const ix1 = sx1 + nx * innerOff * side, iz1 = sz1 + nz * innerOff * side;
-      const ox0 = sx0 + nx * outerOff * side, oz0 = sz0 + nz * outerOff * side;
-      const ox1 = sx1 + nx * outerOff * side, oz1 = sz1 + nz * outerOff * side;
-      const ey0 = getTerrainElevation(sx0, sz0);
-      const ey1 = getTerrainElevation(sx1, sz1);
-
-      swVerts.push(
-        ix0, ey0 + swY, iz0, ix1, ey1 + swY, iz1, ox1, ey1 + swY, oz1,
-        ix0, ey0 + swY, iz0, ox1, ey1 + swY, oz1, ox0, ey0 + swY, oz0
-      );
-
-      curbVerts.push(
-        ix0, ey0, iz0, ix1, ey1, iz1, ix1, ey1 + curbH, iz1,
-        ix0, ey0, iz0, ix1, ey1 + curbH, iz1, ix0, ey0 + curbH, iz0
-      );
-    }
-    if (swVerts.length > 0) {
-      const swGeom = new THREE.BufferGeometry();
-      swGeom.setAttribute('position', new THREE.Float32BufferAttribute(swVerts, 3));
-      swGeom.computeVertexNormals();
-      const swMesh = new THREE.Mesh(swGeom, sidewalkMat);
-      swMesh.receiveShadow = true;
-      scene.add(swMesh);
-    }
-    if (curbVerts.length > 0) {
-      const curbGeom = new THREE.BufferGeometry();
-      curbGeom.setAttribute('position', new THREE.Float32BufferAttribute(curbVerts, 3));
-      curbGeom.computeVertexNormals();
-      const curbMesh = new THREE.Mesh(curbGeom, curbMat);
-      curbMesh.receiveShadow = true;
-      scene.add(curbMesh);
-    }
-  }
-}
 
 
 // Trees — varied deciduous with multi-cluster canopy
