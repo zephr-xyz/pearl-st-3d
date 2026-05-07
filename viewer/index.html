@@ -964,21 +964,68 @@ console.log('Signs loaded:', signsData.length);
     const W = 512, H = 128;
     cvs.width = W; cvs.height = H;
     const ctx = cvs.getContext('2d');
-    ctx.fillStyle = '#1a1a2e';
+
+    // Sign panel background — dark with subtle material grain
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    bgGrad.addColorStop(0, '#1a1a2e');
+    bgGrad.addColorStop(0.5, '#1e1e34');
+    bgGrad.addColorStop(1, '#161628');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#d4c5a9';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(6, 6, W - 12, H - 12);
-    ctx.fillStyle = '#f5f0e0';
+
+    // Surface texture noise (simulates painted metal/wood grain)
+    ctx.globalAlpha = 0.04;
+    for (let i = 0; i < 200; i++) {
+      ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000';
+      ctx.fillRect(Math.random() * W, Math.random() * H, Math.random() * 3 + 1, 1);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Raised border with bevel effect
+    // Outer shadow (inset)
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+    // Inner highlight (raised edge)
+    ctx.strokeStyle = '#c8b890';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(7, 7, W - 14, H - 14);
+    // Inner edge shadow
+    ctx.strokeStyle = 'rgba(200,184,144,0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(9, 9, W - 18, H - 18);
+
+    // Text with subtle shadow for depth
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     let fontSize = 42;
-    ctx.font = '600 ' + fontSize + 'px sans-serif';
-    while (ctx.measureText(name).width > W - 40 && fontSize > 14) {
+    ctx.font = '700 ' + fontSize + 'px sans-serif';
+    while (ctx.measureText(name).width > W - 50 && fontSize > 14) {
       fontSize -= 2;
-      ctx.font = '600 ' + fontSize + 'px sans-serif';
+      ctx.font = '700 ' + fontSize + 'px sans-serif';
     }
+
+    // Text drop shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillText(name, W / 2 + 1, H / 2 + 2);
+
+    // Main text — warm cream
+    ctx.fillStyle = '#f5edd8';
     ctx.fillText(name, W / 2, H / 2);
+
+    // Subtle top highlight on text (embossed effect)
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(name, W / 2, H / 2 - 1);
+    ctx.globalAlpha = 1.0;
+
+    // Top edge light catch (simulates overhead lighting on sign face)
+    const topLight = ctx.createLinearGradient(0, 0, 0, 20);
+    topLight.addColorStop(0, 'rgba(255,255,255,0.06)');
+    topLight.addColorStop(1, 'transparent');
+    ctx.fillStyle = topLight;
+    ctx.fillRect(8, 8, W - 16, 20);
+
     const tex = new THREE.CanvasTexture(cvs);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
@@ -1049,8 +1096,10 @@ console.log('Signs loaded:', signsData.length);
 
     const geom = new THREE.PlaneGeometry(signW, SIGN_H);
     const tex = createSignTexture(sign.name);
-    const mat = new THREE.MeshBasicMaterial({
-      map: tex, side: THREE.DoubleSide
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex, side: THREE.DoubleSide,
+      roughness: 0.4, metalness: 0.1,
+      emissive: 0x111118, emissiveIntensity: 0.3
     });
 
     const mesh = new THREE.Mesh(geom, mat);
