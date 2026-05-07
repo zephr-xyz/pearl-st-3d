@@ -143,9 +143,9 @@ camera.position.set(180, 40, -120);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.8;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -165,7 +165,7 @@ scene.add(ambient);
 const sun = new THREE.DirectionalLight(0xffffff, 1.2);
 sun.position.set(80, 60, 50);
 sun.castShadow = true;
-sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -200;
 sun.shadow.camera.right = 200;
 sun.shadow.camera.top = 200;
@@ -294,7 +294,7 @@ function createProceduralFacade(style, wall) {
   const height = wall.height;
   const entrances = wall.entrances || [];
 
-  const W = 640;
+  const W = 512;
   const H = Math.round(W * (height / Math.max(width, 1)));
   const canvas2d = document.createElement('canvas');
   canvas2d.width = W;
@@ -1176,7 +1176,7 @@ for (const feat of (data.ground_features || [])) {
 
   // Add grass tufts for vegetation areas
   if (isVegetation && feat.area > 50) {
-    const numTufts = Math.min(Math.floor(feat.area / 20), 40);
+    const numTufts = Math.min(Math.floor(feat.area / 40), 20);
     const xs = feat.points.map(p => p[0]), ys = feat.points.map(p => p[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -1300,6 +1300,7 @@ for (const road of (data.roads || [])) {
 // Trees — varied deciduous with multi-cluster canopy
 const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 });
 const canopyColors = [0x7ac07a, 0x6db86d, 0x80c880, 0x5aaa5a, 0x70b870, 0x88cc88];
+const canopyMats = canopyColors.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, flatShading: true }));
 for (const tree of (data.trees || [])) {
   const seed = Math.abs(tree.x * 7 + tree.y * 13) | 0;
   const scale = 0.7 + (seed % 10) / 15;
@@ -1307,14 +1308,13 @@ for (const tree of (data.trees || [])) {
   const trunkR = 0.12 + (seed % 3) * 0.04;
 
   const treeElev = getTerrainElevation(tree.x, tree.y);
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.7, trunkR, trunkH, 8), trunkMat);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.7, trunkR, trunkH, 5), trunkMat);
   trunk.position.set(tree.x, treeElev + trunkH / 2, tree.y);
   trunk.castShadow = true;
   scene.add(trunk);
 
-  const cColor = canopyColors[seed % canopyColors.length];
-  const cMat = new THREE.MeshStandardMaterial({ color: cColor, roughness: 0.85, flatShading: true });
-  const clusters = 3 + (seed % 3);
+  const cMat = canopyMats[seed % canopyColors.length];
+  const clusters = 2 + (seed % 2);
   const baseY = treeElev + trunkH + 1.2 * scale;
   for (let c = 0; c < clusters; c++) {
     const cr = (1.2 + (c % 2) * 0.5) * scale;
@@ -1322,7 +1322,7 @@ for (const tree of (data.trees || [])) {
     const offX = Math.cos(angle) * 0.6 * scale;
     const offZ = Math.sin(angle) * 0.6 * scale;
     const offY = (c < 2 ? 0.8 : 0) * scale;
-    const cluster = new THREE.Mesh(new THREE.DodecahedronGeometry(cr, 1), cMat);
+    const cluster = new THREE.Mesh(new THREE.DodecahedronGeometry(cr, 0), cMat);
     cluster.position.set(tree.x + offX, baseY + offY, tree.y + offZ);
     cluster.rotation.set(seed + c, seed * 0.7 + c, 0);
     cluster.castShadow = true;
@@ -1378,11 +1378,11 @@ for (const rack of (data.bike_racks || [])) {
   const pipeR = 0.025;
   // U-shape: two vertical posts + semicircle top
   for (let side = -1; side <= 1; side += 2) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, 0.75, 8), rackMat);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, 0.75, 4), rackMat);
     post.position.set(side * 0.2, 0.375, 0);
     rGroup.add(post);
   }
-  const curve = new THREE.Mesh(new THREE.TorusGeometry(0.2, pipeR, 8, 12, Math.PI), rackMat);
+  const curve = new THREE.Mesh(new THREE.TorusGeometry(0.2, pipeR, 4, 8, Math.PI), rackMat);
   curve.position.set(0, 0.75, 0);
   curve.rotation.z = Math.PI;
   curve.rotation.y = Math.PI / 2;
@@ -1401,8 +1401,8 @@ const lampGlowMat = new THREE.MeshStandardMaterial({ color: 0xfff8e0, emissive: 
 for (const road of (data.roads || [])) {
   if (road.class !== 'tertiary' && road.class !== 'residential' && road.class !== 'primary') continue;
   if (road.points.length < 2) continue;
-  let accum = 12;
-  const spacing = 30;
+  let accum = 20;
+  const spacing = 45;
   const roadHW = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : 6) / 2;
   const lampOffset = roadHW + 0.3 + 1.0;
   for (let i = 0; i < road.points.length - 1; i++) {
@@ -1419,14 +1419,14 @@ for (const road of (data.roads || [])) {
       const lx = px + nx * lampOffset * side, lz = pz + nz * lampOffset * side;
 
       const lGroup = new THREE.Group();
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 4.5, 8), lampPoleMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 4.5, 5), lampPoleMat);
       pole.position.y = 2.25;
       lGroup.add(pole);
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 6), lampPoleMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 4), lampPoleMat);
       arm.position.set(0.4, 4.3, 0);
       arm.rotation.z = Math.PI / 2.5;
       lGroup.add(arm);
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), lampGlowMat);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 5, 3), lampGlowMat);
       lamp.position.set(0.7, 4.2, 0);
       lGroup.add(lamp);
 
