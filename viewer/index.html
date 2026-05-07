@@ -930,6 +930,178 @@ function createBuilding(bld, mode) {
     }
   }
 
+  // Landmark features — towers, clocks, stepped massing
+  if (mode !== 'wireframe' && style.landmark_features) {
+    const lf = style.landmark_features;
+    const h = bld.height;
+    const cx = bld.centroid_m[0], cz = bld.centroid_m[1];
+    const fp = bld.footprint_m;
+
+    // Building orientation (longest edge)
+    let longestLen = 0, buildingAngle = 0;
+    for (let i = 0; i < fp.length; i++) {
+      const j = (i + 1) % fp.length;
+      const dx = fp[j][0] - fp[i][0], dz = fp[j][1] - fp[i][1];
+      const len = Math.sqrt(dx*dx + dz*dz);
+      if (len > longestLen) { longestLen = len; buildingAngle = Math.atan2(dz, dx); }
+    }
+
+    // Tower
+    if (lf.tower) {
+      const towerW = Math.min(longestLen * 0.25, 5);
+      const towerH = h * 0.5;
+      const towerMat = new THREE.MeshStandardMaterial({
+        color: style.color || '#d4b896', roughness: 0.7, metalness: 0.05
+      });
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, towerW), towerMat);
+      tower.position.set(cx, h + towerH / 2, cz);
+      tower.rotation.y = -buildingAngle;
+      tower.castShadow = true;
+      group.add(tower);
+
+      // Clock face on tower
+      if (lf.clock) {
+        const clockR = towerW * 0.35;
+        const clockCanvas = document.createElement('canvas');
+        clockCanvas.width = 128; clockCanvas.height = 128;
+        const cctx = clockCanvas.getContext('2d');
+        cctx.fillStyle = '#f5f0e0';
+        cctx.beginPath(); cctx.arc(64, 64, 60, 0, Math.PI * 2); cctx.fill();
+        cctx.strokeStyle = '#4a3a2a'; cctx.lineWidth = 4;
+        cctx.stroke();
+        // Hour marks
+        for (let hr = 0; hr < 12; hr++) {
+          const a = hr * Math.PI / 6 - Math.PI / 2;
+          cctx.beginPath();
+          cctx.moveTo(64 + Math.cos(a) * 48, 64 + Math.sin(a) * 48);
+          cctx.lineTo(64 + Math.cos(a) * 54, 64 + Math.sin(a) * 54);
+          cctx.strokeStyle = '#2a2a2a'; cctx.lineWidth = 3; cctx.stroke();
+        }
+        // Hands
+        cctx.strokeStyle = '#1a1a1a'; cctx.lineWidth = 3;
+        cctx.beginPath(); cctx.moveTo(64, 64); cctx.lineTo(64, 28); cctx.stroke();
+        cctx.beginPath(); cctx.moveTo(64, 64); cctx.lineTo(84, 52); cctx.stroke();
+
+        const clockTex = new THREE.CanvasTexture(clockCanvas);
+        clockTex.colorSpace = THREE.SRGBColorSpace;
+        const clockMat = new THREE.MeshStandardMaterial({ map: clockTex, roughness: 0.3 });
+        const clockGeom = new THREE.CircleGeometry(clockR, 24);
+
+        // Place clock on two sides of tower
+        const axX = Math.cos(buildingAngle), axZ = Math.sin(buildingAngle);
+        const nyX = -Math.sin(buildingAngle), nyZ = Math.cos(buildingAngle);
+        const clockY = h + towerH * 0.65;
+        const offset = towerW / 2 + 0.05;
+
+        const clock1 = new THREE.Mesh(clockGeom, clockMat);
+        clock1.position.set(cx + axX * offset, clockY, cz + axZ * offset);
+        clock1.rotation.y = -buildingAngle;
+        group.add(clock1);
+
+        const clock2 = new THREE.Mesh(clockGeom.clone(), clockMat);
+        clock2.position.set(cx - axX * offset, clockY, cz - axZ * offset);
+        clock2.rotation.y = -buildingAngle + Math.PI;
+        group.add(clock2);
+
+        const clock3 = new THREE.Mesh(clockGeom.clone(), clockMat);
+        clock3.position.set(cx + nyX * offset, clockY, cz + nyZ * offset);
+        clock3.rotation.y = -buildingAngle + Math.PI / 2;
+        group.add(clock3);
+
+        const clock4 = new THREE.Mesh(clockGeom.clone(), clockMat);
+        clock4.position.set(cx - nyX * offset, clockY, cz - nyZ * offset);
+        clock4.rotation.y = -buildingAngle - Math.PI / 2;
+        group.add(clock4);
+      }
+
+      // Tiered setbacks (Art Deco stepped massing)
+      if (lf.tiered) {
+        const stepMat = new THREE.MeshStandardMaterial({
+          color: style.color || '#d4b896', roughness: 0.75, metalness: 0.02
+        });
+        const steps = 2;
+        for (let s = 1; s <= steps; s++) {
+          const stepFrac = 0.7 - s * 0.15;
+          const stepW = longestLen * stepFrac;
+          const stepD = (longestLen * 0.4) * stepFrac;
+          const stepH = h * 0.12;
+          const stepY = h - s * stepH * 1.5;
+          const step = new THREE.Mesh(new THREE.BoxGeometry(stepW, stepH, stepD), stepMat);
+          step.position.set(cx, stepY, cz);
+          step.rotation.y = -buildingAngle;
+          step.castShadow = true;
+          group.add(step);
+        }
+      }
+    }
+
+    // Columns on facade
+    if (lf.columns && !lf.tower) {
+      const colMat = new THREE.MeshStandardMaterial({ color: '#e8e0d8', roughness: 0.6, metalness: 0.05 });
+      // Find street-facing wall
+      let bestWall = bld.walls[0];
+      for (const w of bld.walls) {
+        if (w.is_exterior && w.length > bestWall.length) bestWall = w;
+      }
+      const v = bestWall.vertices;
+      const wx0 = v[0][0], wz0 = v[0][2], wx1 = v[1][0], wz1 = v[1][2];
+      const wdx = wx1 - wx0, wdz = wz1 - wz0;
+      const wlen = Math.sqrt(wdx*wdx + wdz*wdz);
+      const wnx = -wdz / wlen, wnz = wdx / wlen;
+      // Outward normal
+      const testX = (wx0+wx1)/2 + wnx, testZ = (wz0+wz1)/2 + wnz;
+      const dTest = (testX-cx)*(testX-cx) + (testZ-cz)*(testZ-cz);
+      const dMid = ((wx0+wx1)/2-cx)*((wx0+wx1)/2-cx) + ((wz0+wz1)/2-cz)*((wz0+wz1)/2-cz);
+      const nDir = dTest > dMid ? 1 : -1;
+
+      const numCols = Math.max(2, Math.round(wlen / 4));
+      const colH = h * 0.85;
+      const colR = 0.18;
+      for (let ci = 0; ci < numCols; ci++) {
+        const t = (ci + 0.5) / numCols;
+        const px = wx0 + t * wdx + wnx * nDir * 0.4;
+        const pz = wz0 + t * wdz + wnz * nDir * 0.4;
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(colR * 0.8, colR, colH, 8), colMat);
+        col.position.set(px, colH / 2, pz);
+        col.castShadow = true;
+        group.add(col);
+      }
+    }
+
+    // Pediment / stepped gable
+    if (lf.pediment && !lf.tower) {
+      const pedMat = new THREE.MeshStandardMaterial({
+        color: style.accent || style.color || '#d4c5a9', roughness: 0.7
+      });
+      let bestWall = bld.walls[0];
+      for (const w of bld.walls) {
+        if (w.is_exterior && w.length > bestWall.length) bestWall = w;
+      }
+      const v = bestWall.vertices;
+      const wmx = (v[0][0] + v[1][0]) / 2, wmz = (v[0][2] + v[1][2]) / 2;
+      const pedW = bestWall.length * 0.4;
+      const pedH = h * 0.2;
+      const pedGeom = new THREE.BufferGeometry();
+      const wdx = v[1][0] - v[0][0], wdz = v[1][2] - v[0][2];
+      const wlen = Math.sqrt(wdx*wdx + wdz*wdz);
+      const dirX = wdx / wlen, dirZ = wdz / wlen;
+
+      // Triangle pediment
+      const p0 = [wmx - dirX * pedW/2, h, wmz - dirZ * pedW/2];
+      const p1 = [wmx + dirX * pedW/2, h, wmz + dirZ * pedW/2];
+      const p2 = [wmx, h + pedH, wmz];
+      const pedVerts = new Float32Array([
+        p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]
+      ]);
+      pedGeom.setAttribute('position', new THREE.BufferAttribute(pedVerts, 3));
+      pedGeom.computeVertexNormals();
+      const ped = new THREE.Mesh(pedGeom, pedMat);
+      ped.material.side = THREE.DoubleSide;
+      ped.castShadow = true;
+      group.add(ped);
+    }
+  }
+
   return group;
 }
 
