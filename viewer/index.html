@@ -319,23 +319,56 @@ function createProceduralFacade(style, wall) {
   ctx.fillStyle = style.color || '#D9D3C8';
   ctx.fillRect(0, 0, W, H);
 
-  // Material texture
+  // Material texture — detailed brick coursework with mortar
   if (style.material && style.material.includes('brick')) {
-    const brickH = 5, brickW = 16;
-    ctx.globalAlpha = 0.05;
-    for (let y = 0; y < H; y += brickH + 1.5) {
-      const rowOff = (Math.floor(y / (brickH + 1.5)) % 2) * (brickW / 2);
-      for (let x = -brickW; x < W + brickW; x += brickW + 1.5) {
-        ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
-        ctx.fillRect(x + rowOff, y, brickW, brickH);
+    const brickH = 6, brickW = 18, mortarW = 1.5;
+    // Mortar lines
+    ctx.fillStyle = 'rgba(180,170,155,0.35)';
+    for (let y = 0; y < H; y += brickH + mortarW) {
+      ctx.fillRect(0, y, W, mortarW);
+    }
+    // Vertical mortar (offset every other row)
+    for (let y = 0; y < H; y += brickH + mortarW) {
+      const rowIdx = Math.floor(y / (brickH + mortarW));
+      const rowOff = (rowIdx % 2) * (brickW / 2);
+      for (let x = rowOff; x < W; x += brickW + mortarW) {
+        ctx.fillRect(x, y, mortarW, brickH);
+      }
+    }
+    // Brick color variation
+    ctx.globalAlpha = 0.06;
+    for (let y = 0; y < H; y += brickH + mortarW) {
+      const rowIdx = Math.floor(y / (brickH + mortarW));
+      const rowOff = (rowIdx % 2) * (brickW / 2);
+      for (let x = rowOff; x < W; x += brickW + mortarW) {
+        const shade = Math.random();
+        ctx.fillStyle = shade > 0.6 ? '#000' : (shade > 0.3 ? '#fff' : '#804020');
+        ctx.fillRect(x + mortarW, y + mortarW, brickW - 1, brickH - 1);
       }
     }
     ctx.globalAlpha = 1.0;
+  } else if (style.material === 'stone') {
+    // Rough stone blocks with visible joints
+    const stoneH = 14, stoneW = 28;
+    ctx.globalAlpha = 0.12;
+    for (let y = 0; y < H; y += stoneH + 2) {
+      const rowOff = (Math.floor(y / (stoneH + 2)) % 2) * (stoneW * 0.4);
+      for (let x = rowOff - stoneW; x < W + stoneW; x += stoneW + 2) {
+        ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
+        ctx.fillRect(x, y, stoneW, stoneH);
+      }
+    }
+    ctx.fillStyle = 'rgba(100,90,70,0.2)';
+    for (let y = 0; y < H; y += stoneH + 2) {
+      ctx.fillRect(0, y, W, 2);
+    }
+    ctx.globalAlpha = 1.0;
   } else if (style.material === 'stucco' || style.material === 'painted_brick' || style.material === 'siding') {
-    ctx.globalAlpha = 0.03;
-    for (let i = 0; i < 300; i++) {
+    ctx.globalAlpha = 0.04;
+    for (let i = 0; i < 400; i++) {
       ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
-      ctx.fillRect(Math.random() * W, Math.random() * H, Math.random() * 4 + 1, Math.random() * 4 + 1);
+      const s = Math.random() * 3 + 1;
+      ctx.fillRect(Math.random() * W, Math.random() * H, s, s);
     }
     ctx.globalAlpha = 1.0;
   }
@@ -382,7 +415,9 @@ function createProceduralFacade(style, wall) {
 
   // === UPPER FLOOR WINDOWS ===
   if (stories > 1) {
-    const winsPerFloor = style.windows === 'vertical_triple' ? 3 : Math.max(2, Math.round(width / 3.2));
+    const gridCols = style.window_grid && style.window_grid.cols > 0 ? style.window_grid.cols : 0;
+    const winsPerFloor = gridCols > 0 ? gridCols :
+      (style.windows === 'vertical_triple' ? 3 : Math.max(2, Math.round(width / 3.2)));
     const winSpacing = W / (winsPerFloor + 0.6);
     const winW = winSpacing * 0.45;
     const winH = floorH * 0.52;
@@ -414,22 +449,33 @@ function createProceduralFacade(style, wall) {
         ctx.fillStyle = style.accent || '#f5f0e0';
         ctx.fillRect(winCx - winW/2 - 1.5, winTop, winW + 3, winH);
 
-        // Glass
-        const g = ctx.createLinearGradient(winCx, winTop, winCx, winTop + winH);
-        g.addColorStop(0, '#2a4a70');
-        g.addColorStop(0.5, '#3a6090');
-        g.addColorStop(1, '#25405f');
+        // Glass — gradient with sky reflection
+        const g = ctx.createLinearGradient(winCx - winW/2, winTop, winCx + winW/2, winTop + winH);
+        g.addColorStop(0, '#1e3a5a');
+        g.addColorStop(0.3, '#2a5080');
+        g.addColorStop(0.7, '#1a3a60');
+        g.addColorStop(1, '#152a45');
         ctx.fillStyle = g;
         ctx.fillRect(winCx - winW/2, winTop + 1, winW, winH - 2);
 
-        // Mullion
-        ctx.fillStyle = style.accent || '#e0d8c8';
+        // Sky reflection (diagonal highlight)
+        ctx.globalAlpha = 0.2;
+        const rg = ctx.createLinearGradient(winCx - winW/2, winTop, winCx + winW/3, winTop + winH * 0.6);
+        rg.addColorStop(0, '#a0d4f0');
+        rg.addColorStop(0.4, '#70b0d8');
+        rg.addColorStop(1, 'transparent');
+        ctx.fillStyle = rg;
+        ctx.fillRect(winCx - winW/2, winTop + 1, winW, winH - 2);
+        ctx.globalAlpha = 1.0;
+
+        // Mullion (vertical divider)
+        ctx.fillStyle = style.accent || '#d0c8b8';
         ctx.fillRect(winCx - 0.8, winTop + 1, 1.6, winH - 2);
 
-        // Reflection
-        ctx.globalAlpha = 0.18;
-        ctx.fillStyle = '#90c0ee';
-        ctx.fillRect(winCx - winW/3, winTop + 4, winW/4, winH * 0.45);
+        // Horizontal mullion for multi-pane
+        if (winH > 30) {
+          ctx.fillRect(winCx - winW/2, winTop + winH * 0.5, winW, 1.2);
+        }
         ctx.globalAlpha = 1.0;
       }
     }
@@ -498,7 +544,7 @@ function createProceduralFacade(style, wall) {
       ctx.fillStyle = style.accent || '#2a2a2a';
       ctx.fillRect(cx - paneW/2 - 2, glassTop - 2, paneW + 4, glassH + 4);
 
-      // Glass
+      // Glass with warm interior glow
       const sg = ctx.createLinearGradient(cx - paneW/2, glassTop, cx + paneW/2, glassBottom);
       sg.addColorStop(0, '#1a3050');
       sg.addColorStop(0.3, '#254565');
@@ -507,10 +553,22 @@ function createProceduralFacade(style, wall) {
       ctx.fillStyle = sg;
       ctx.fillRect(cx - paneW/2, glassTop, paneW, glassH);
 
-      // Reflection
-      ctx.globalAlpha = 0.1;
-      ctx.fillStyle = '#88bbdd';
-      ctx.fillRect(cx - paneW/3, glassTop + 4, paneW/4, glassH * 0.6);
+      // Interior warmth (subtle amber glow from inside)
+      ctx.globalAlpha = 0.12;
+      const ig = ctx.createRadialGradient(cx, glassTop + glassH * 0.6, 0, cx, glassTop + glassH * 0.6, paneW * 0.6);
+      ig.addColorStop(0, '#f0c878');
+      ig.addColorStop(0.6, '#a08040');
+      ig.addColorStop(1, 'transparent');
+      ctx.fillStyle = ig;
+      ctx.fillRect(cx - paneW/2, glassTop, paneW, glassH);
+
+      // Sky reflection (top portion)
+      ctx.globalAlpha = 0.15;
+      const rg2 = ctx.createLinearGradient(cx - paneW/3, glassTop, cx + paneW/4, glassTop + glassH * 0.4);
+      rg2.addColorStop(0, '#a0d4f0');
+      rg2.addColorStop(1, 'transparent');
+      ctx.fillStyle = rg2;
+      ctx.fillRect(cx - paneW/2, glassTop, paneW, glassH * 0.5);
       ctx.globalAlpha = 1.0;
     }
   } else {
@@ -583,8 +641,23 @@ function createProceduralFacade(style, wall) {
   }
 
   // === BASE/PLINTH ===
-  ctx.fillStyle = 'rgba(0,0,0,0.1)';
-  ctx.fillRect(0, H - 3, W, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(0, H - 4, W, 4);
+
+  // === AMBIENT OCCLUSION ===
+  // Bottom edge darkening (ground contact shadow)
+  const aoBottom = ctx.createLinearGradient(0, H - 20, 0, H);
+  aoBottom.addColorStop(0, 'transparent');
+  aoBottom.addColorStop(1, 'rgba(0,0,0,0.08)');
+  ctx.fillStyle = aoBottom;
+  ctx.fillRect(0, H - 20, W, 20);
+
+  // Under-cornice shadow
+  const aoCornice = ctx.createLinearGradient(0, corniceH, 0, corniceH + 12);
+  aoCornice.addColorStop(0, 'rgba(0,0,0,0.06)');
+  aoCornice.addColorStop(1, 'transparent');
+  ctx.fillStyle = aoCornice;
+  ctx.fillRect(0, corniceH, W, 12);
 
   const tex = new THREE.CanvasTexture(canvas2d);
   tex.colorSpace = THREE.SRGBColorSpace;
