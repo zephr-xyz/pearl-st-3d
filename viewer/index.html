@@ -1374,9 +1374,10 @@ function triangulatePoly(pts) {
 
 for (const feat of (data.ground_features || [])) {
   if (feat.points.length < 3) continue;
+  const isVegetation = ['park', 'recreation', 'managed', 'horticulture', 'protected', 'grass', 'forest'].includes(feat.subtype);
+  if (!isVegetation) continue;
   const color = groundFeatureColors[feat.subtype] || 0x88aa66;
   const roughness = groundFeatureRoughness[feat.subtype] || 0.9;
-  const isVegetation = ['park', 'recreation', 'managed', 'horticulture', 'protected', 'grass', 'forest'].includes(feat.subtype);
 
   const triPts = triangulatePoly(feat.points);
   if (triPts.length < 3) continue;
