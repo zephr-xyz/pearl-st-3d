@@ -927,10 +927,8 @@ const signsData = await signsResp.json();
     const wallMx = x0 + 0.5 * dx, wallMz = z0 + 0.5 * dz;
     const bcx = bld.centroid_m[0], bcz = bld.centroid_m[1];
     let nx = -dz / len, nz = dx / len;
-    // Flip: if this candidate points TOWARD centroid, reverse it
+    // Flip if this candidate points TOWARD centroid (so it faces outward)
     if (nx * (bcx - wallMx) + nz * (bcz - wallMz) > 0) { nx = -nx; nz = -nz; }
-    // Invert once more since the previous logic was producing inward-facing
-    nx = -nx; nz = -nz;
 
     const offset = 0.15;
     const cx = x0 + t * dx + nx * offset;
