@@ -1425,7 +1425,7 @@ for (const feat of (data.ground_features || [])) {
 
 // Roads — rendered as flat quads
 // Mapbox Streets — white roads, warm-toned pedestrian areas
-const roadColors = { tertiary: 0x404040, residential: 0x484848, primary: 0x383838, footway: 0xd4c8b0, pedestrian: 0xd4c8b0, service: 0x505050 };
+const roadColors = { tertiary: 0x404040, residential: 0x484848, primary: 0x383838, footway: 0xc4b4a0, pedestrian: 0xc4b4a0, service: 0x505050 };
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 1.5 : 2.5) / 2;
@@ -1452,24 +1452,40 @@ for (const road of (data.roads || [])) {
   const rGeom = new THREE.BufferGeometry();
   rGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
   rGeom.computeVertexNormals();
-  const rMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+  const rMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const rMesh = new THREE.Mesh(rGeom, rMat);
   rMesh.receiveShadow = true;
   scene.add(rMesh);
 }
 
-// Sidewalks — flat alongside vehicular roads (rendered below road level to avoid z-fighting)
-const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xc8c0b4, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 });
+// Sidewalks — only on mid-segments of vehicular roads, trimmed at intersections
+// Collect road endpoint positions to detect intersections
+const roadEndpoints = [];
+for (const road of (data.roads || [])) {
+  if (road.points.length < 2) continue;
+  if (road.class === 'footway' || road.class === 'pedestrian' || road.class === 'service') continue;
+  roadEndpoints.push(road.points[0], road.points[road.points.length - 1]);
+}
+function nearIntersection(x, z, threshold) {
+  for (const ep of roadEndpoints) {
+    const dx = x - ep[0], dz = z - ep[1];
+    if (dx * dx + dz * dz < threshold * threshold) return true;
+  }
+  return false;
+}
+
+const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xc8c0b4, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, depthWrite: true });
 const curbMat = new THREE.MeshStandardMaterial({ color: 0x989088, roughness: 0.8, metalness: 0, side: THREE.DoubleSide });
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   if (road.class === 'footway' || road.class === 'pedestrian' || road.class === 'service') continue;
 
   const roadHW = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'primary' ? 6 : 3) / 2;
-  const swWidth = 2.0;
-  const swY = 0.01;
-  const curbH = 0.10;
+  const swWidth = 1.8;
+  const swY = -0.02;
+  const curbH = 0.08;
   const gap = 0.3;
+  const trimDist = 6.0;
 
   for (let side = -1; side <= 1; side += 2) {
     const swVerts = [];
@@ -1480,17 +1496,30 @@ for (const road of (data.roads || [])) {
       const dx = x1 - x0, dz = z1 - z0;
       const len = Math.sqrt(dx*dx + dz*dz);
       if (len < 0.3) continue;
-      const nx = -dz / len, nz = dx / len;
 
+      // Skip segments near intersections
+      const midX = (x0 + x1) / 2, midZ = (z0 + z1) / 2;
+      if (nearIntersection(x0, z0, trimDist) && nearIntersection(x1, z1, trimDist)) continue;
+
+      const nx = -dz / len, nz = dx / len;
       const innerOff = roadHW + gap;
       const outerOff = roadHW + gap + swWidth;
 
-      const ix0 = x0 + nx * innerOff * side, iz0 = z0 + nz * innerOff * side;
-      const ix1 = x1 + nx * innerOff * side, iz1 = z1 + nz * innerOff * side;
-      const ox0 = x0 + nx * outerOff * side, oz0 = z0 + nz * outerOff * side;
-      const ox1 = x1 + nx * outerOff * side, oz1 = z1 + nz * outerOff * side;
-      const ey0 = getTerrainElevation(x0, z0);
-      const ey1 = getTerrainElevation(x1, z1);
+      // Trim start/end if near intersection
+      let t0 = 0, t1 = 1;
+      if (nearIntersection(x0, z0, trimDist)) t0 = Math.min(0.4, trimDist / len);
+      if (nearIntersection(x1, z1, trimDist)) t1 = Math.max(0.6, 1 - trimDist / len);
+      if (t0 >= t1) continue;
+
+      const sx0 = x0 + dx * t0, sz0 = z0 + dz * t0;
+      const sx1 = x0 + dx * t1, sz1 = z0 + dz * t1;
+
+      const ix0 = sx0 + nx * innerOff * side, iz0 = sz0 + nz * innerOff * side;
+      const ix1 = sx1 + nx * innerOff * side, iz1 = sz1 + nz * innerOff * side;
+      const ox0 = sx0 + nx * outerOff * side, oz0 = sz0 + nz * outerOff * side;
+      const ox1 = sx1 + nx * outerOff * side, oz1 = sz1 + nz * outerOff * side;
+      const ey0 = getTerrainElevation(sx0, sz0);
+      const ey1 = getTerrainElevation(sx1, sz1);
 
       swVerts.push(
         ix0, ey0 + swY, iz0, ix1, ey1 + swY, iz1, ox1, ey1 + swY, oz1,
@@ -1521,8 +1550,8 @@ for (const road of (data.roads || [])) {
   }
 }
 
-// Crosswalks — white striped markings across roads
-const crosswalkMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.7, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+// Crosswalks — white striped markings painted on road surface
+const crosswalkMat = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.75, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
 for (const cw of (data.crosswalks || [])) {
   if (cw.points.length < 2) continue;
   for (let i = 0; i < cw.points.length - 1; i++) {
@@ -1530,18 +1559,19 @@ for (const cw of (data.crosswalks || [])) {
     const [x1, z1] = cw.points[i + 1];
     const dx = x1 - x0, dz = z1 - z0;
     const segLen = Math.sqrt(dx * dx + dz * dz);
-    if (segLen < 0.5) continue;
+    if (segLen < 1.5) continue;
     const ux = dx / segLen, uz = dz / segLen;
     const nx = -uz, nz = ux;
-    const stripeW = 0.5, stripeGap = 0.6, stripeLen = 2.5;
+    const stripeW = 0.4, stripeGap = 0.5, stripeLen = 2.2;
     const numStripes = Math.floor(segLen / (stripeW + stripeGap));
+    if (numStripes < 2) continue;
     const cwVerts = [];
     for (let s = 0; s < numStripes; s++) {
       const t = (s + 0.5) * (stripeW + stripeGap);
       const cx = x0 + ux * t, cz = z0 + uz * t;
       const hlf = stripeLen / 2;
       const hw = stripeW / 2;
-      const ey = getTerrainElevation(cx, cz) + 0.03;
+      const ey = getTerrainElevation(cx, cz) + 0.025;
       cwVerts.push(
         cx + ux * hw - nx * hlf, ey, cz + uz * hw - nz * hlf,
         cx + ux * hw + nx * hlf, ey, cz + uz * hw + nz * hlf,
