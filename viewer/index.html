@@ -79,8 +79,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
   <h1>Procedural 3D Buildings</h1>
   <div class="subtitle">Pearl Street Mall, Boulder CO — 13th to 17th</div>
   <div class="stat-row">
-    <div class="stat"><div class="stat-num">275</div><div class="stat-label">Buildings</div></div>
-    <div class="stat"><div class="stat-num">1409</div><div class="stat-label">Facades</div></div>
+    <div class="stat"><div class="stat-num">240</div><div class="stat-label">Buildings</div></div>
+    <div class="stat"><div class="stat-num">1220</div><div class="stat-label">Facades</div></div>
     <div class="stat"><div class="stat-num">201</div><div class="stat-label">Trees</div></div>
   </div>
   <div class="legend">
@@ -946,22 +946,44 @@ function createBuilding(bld, mode) {
       if (len > longestLen) { longestLen = len; buildingAngle = Math.atan2(dz, dx); }
     }
 
-    // Tower
-    if (lf.tower) {
-      const towerW = Math.min(longestLen * 0.25, 5);
-      const towerH = h * 0.5;
-      const towerMat = new THREE.MeshStandardMaterial({
-        color: style.color || '#d4b896', roughness: 0.7, metalness: 0.05
-      });
-      const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, towerW), towerMat);
-      tower.position.set(cx, h + towerH / 2, cz);
-      tower.rotation.y = -buildingAngle;
-      tower.castShadow = true;
-      group.add(tower);
+    // Oriented footprint extents
+    const axX = Math.cos(buildingAngle), axZ = Math.sin(buildingAngle);
+    const ayX = -Math.sin(buildingAngle), ayZ = Math.cos(buildingAngle);
+    let localMinX = Infinity, localMaxX = -Infinity;
+    let localMinY = Infinity, localMaxY = -Infinity;
+    for (const p of fp) {
+      const dx = p[0] - cx, dz = p[1] - cz;
+      const lx = dx * axX + dz * axZ;
+      const ly = dx * ayX + dz * ayZ;
+      localMinX = Math.min(localMinX, lx); localMaxX = Math.max(localMaxX, lx);
+      localMinY = Math.min(localMinY, ly); localMaxY = Math.max(localMaxY, ly);
+    }
+    const fW = localMaxX - localMinX, fD = localMaxY - localMinY;
 
-      // Clock face on tower
+    const tierMat = new THREE.MeshStandardMaterial({
+      color: style.color || '#d4b896', roughness: 0.7, metalness: 0.05
+    });
+
+    // NAIP-derived roof profile (multi-level stepped massing)
+    if (bld.roof_profile) {
+      for (const level of bld.roof_profile) {
+        const tierW = fW * level.fraction;
+        const tierD = fD * level.fraction;
+        const tierH = level.height_add;
+        const tier = new THREE.Mesh(new THREE.BoxGeometry(tierW, tierH, tierD), tierMat);
+        tier.position.set(cx, h + tierH / 2, cz);
+        tier.rotation.y = -buildingAngle;
+        tier.castShadow = true;
+        tier.receiveShadow = true;
+        group.add(tier);
+      }
+
+      // Clock on the tower tier (highest level)
       if (lf.clock) {
-        const clockR = towerW * 0.35;
+        const topLevel = bld.roof_profile[bld.roof_profile.length - 1];
+        const towerW = fW * topLevel.fraction;
+        const towerTop = h + topLevel.height_add;
+        const clockR = towerW * 0.3;
         const clockCanvas = document.createElement('canvas');
         clockCanvas.width = 128; clockCanvas.height = 128;
         const cctx = clockCanvas.getContext('2d');
@@ -969,7 +991,6 @@ function createBuilding(bld, mode) {
         cctx.beginPath(); cctx.arc(64, 64, 60, 0, Math.PI * 2); cctx.fill();
         cctx.strokeStyle = '#4a3a2a'; cctx.lineWidth = 4;
         cctx.stroke();
-        // Hour marks
         for (let hr = 0; hr < 12; hr++) {
           const a = hr * Math.PI / 6 - Math.PI / 2;
           cctx.beginPath();
@@ -977,7 +998,6 @@ function createBuilding(bld, mode) {
           cctx.lineTo(64 + Math.cos(a) * 54, 64 + Math.sin(a) * 54);
           cctx.strokeStyle = '#2a2a2a'; cctx.lineWidth = 3; cctx.stroke();
         }
-        // Hands
         cctx.strokeStyle = '#1a1a1a'; cctx.lineWidth = 3;
         cctx.beginPath(); cctx.moveTo(64, 64); cctx.lineTo(64, 28); cctx.stroke();
         cctx.beginPath(); cctx.moveTo(64, 64); cctx.lineTo(84, 52); cctx.stroke();
@@ -987,38 +1007,35 @@ function createBuilding(bld, mode) {
         const clockMat = new THREE.MeshStandardMaterial({ map: clockTex, roughness: 0.3 });
         const clockGeom = new THREE.CircleGeometry(clockR, 24);
 
-        // Place clock on two sides of tower
-        const axX = Math.cos(buildingAngle), axZ = Math.sin(buildingAngle);
-        const nyX = -Math.sin(buildingAngle), nyZ = Math.cos(buildingAngle);
-        const clockY = h + towerH * 0.65;
+        const clockY = towerTop - topLevel.height_add * 0.35;
         const offset = towerW / 2 + 0.05;
 
-        const clock1 = new THREE.Mesh(clockGeom, clockMat);
-        clock1.position.set(cx + axX * offset, clockY, cz + axZ * offset);
-        clock1.rotation.y = -buildingAngle;
-        group.add(clock1);
-
-        const clock2 = new THREE.Mesh(clockGeom.clone(), clockMat);
-        clock2.position.set(cx - axX * offset, clockY, cz - axZ * offset);
-        clock2.rotation.y = -buildingAngle + Math.PI;
-        group.add(clock2);
-
-        const clock3 = new THREE.Mesh(clockGeom.clone(), clockMat);
-        clock3.position.set(cx + nyX * offset, clockY, cz + nyZ * offset);
-        clock3.rotation.y = -buildingAngle + Math.PI / 2;
-        group.add(clock3);
-
-        const clock4 = new THREE.Mesh(clockGeom.clone(), clockMat);
-        clock4.position.set(cx - nyX * offset, clockY, cz - nyZ * offset);
-        clock4.rotation.y = -buildingAngle - Math.PI / 2;
-        group.add(clock4);
+        // Place clocks on 4 faces of tower, each facing outward
+        const dirs = [
+          [axX, axZ],   // +long axis
+          [-axX, -axZ], // -long axis
+          [ayX, ayZ],   // +short axis
+          [-ayX, -ayZ], // -short axis
+        ];
+        for (let ci = 0; ci < 4; ci++) {
+          const [nx, nz] = dirs[ci];
+          const clock = new THREE.Mesh(ci === 0 ? clockGeom : clockGeom.clone(), clockMat);
+          clock.position.set(cx + nx * offset, clockY, cz + nz * offset);
+          clock.rotation.y = Math.atan2(nx, nz);
+          group.add(clock);
+        }
       }
+    } else if (lf.tower) {
+      // Fallback: generic tower for buildings without NAIP roof profile
+      const towerW = Math.min(longestLen * 0.25, 5);
+      const towerH = h * 0.5;
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, towerW), tierMat);
+      tower.position.set(cx, h + towerH / 2, cz);
+      tower.rotation.y = -buildingAngle;
+      tower.castShadow = true;
+      group.add(tower);
 
-      // Tiered setbacks (Art Deco stepped massing)
       if (lf.tiered) {
-        const stepMat = new THREE.MeshStandardMaterial({
-          color: style.color || '#d4b896', roughness: 0.75, metalness: 0.02
-        });
         const steps = 2;
         for (let s = 1; s <= steps; s++) {
           const stepFrac = 0.7 - s * 0.15;
@@ -1026,11 +1043,47 @@ function createBuilding(bld, mode) {
           const stepD = (longestLen * 0.4) * stepFrac;
           const stepH = h * 0.12;
           const stepY = h - s * stepH * 1.5;
-          const step = new THREE.Mesh(new THREE.BoxGeometry(stepW, stepH, stepD), stepMat);
+          const step = new THREE.Mesh(new THREE.BoxGeometry(stepW, stepH, stepD), tierMat);
           step.position.set(cx, stepY, cz);
           step.rotation.y = -buildingAngle;
           step.castShadow = true;
           group.add(step);
+        }
+      }
+
+      if (lf.clock) {
+        const towerTop = h + h * 0.5;
+        const clockR = towerW * 0.35;
+        const clockCanvas = document.createElement('canvas');
+        clockCanvas.width = 128; clockCanvas.height = 128;
+        const cctx = clockCanvas.getContext('2d');
+        cctx.fillStyle = '#f5f0e0';
+        cctx.beginPath(); cctx.arc(64, 64, 60, 0, Math.PI * 2); cctx.fill();
+        cctx.strokeStyle = '#4a3a2a'; cctx.lineWidth = 4; cctx.stroke();
+        for (let hr = 0; hr < 12; hr++) {
+          const a = hr * Math.PI / 6 - Math.PI / 2;
+          cctx.beginPath();
+          cctx.moveTo(64 + Math.cos(a) * 48, 64 + Math.sin(a) * 48);
+          cctx.lineTo(64 + Math.cos(a) * 54, 64 + Math.sin(a) * 54);
+          cctx.strokeStyle = '#2a2a2a'; cctx.lineWidth = 3; cctx.stroke();
+        }
+        cctx.strokeStyle = '#1a1a1a'; cctx.lineWidth = 3;
+        cctx.beginPath(); cctx.moveTo(64, 64); cctx.lineTo(64, 28); cctx.stroke();
+        cctx.beginPath(); cctx.moveTo(64, 64); cctx.lineTo(84, 52); cctx.stroke();
+        const clockTex = new THREE.CanvasTexture(clockCanvas);
+        clockTex.colorSpace = THREE.SRGBColorSpace;
+        const clockMat = new THREE.MeshStandardMaterial({ map: clockTex, roughness: 0.3 });
+        const clockGeom = new THREE.CircleGeometry(clockR, 24);
+        const clockY = towerTop * 0.85;
+        const offset = towerW / 2 + 0.05;
+
+        for (let side = 0; side < 4; side++) {
+          const a = buildingAngle + side * Math.PI / 2;
+          const nx = Math.cos(a), nz = Math.sin(a);
+          const c = new THREE.Mesh(side === 0 ? clockGeom : clockGeom.clone(), clockMat);
+          c.position.set(cx + nx * offset, clockY, cz + nz * offset);
+          c.rotation.y = Math.atan2(nx, nz);
+          group.add(c);
         }
       }
     }
