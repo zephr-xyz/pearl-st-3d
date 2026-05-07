@@ -959,72 +959,83 @@ console.log('Signs loaded:', signsData.length);
   const bldMap = {};
   for (const bld of data.buildings) bldMap[bld.id] = bld;
 
+  // Sign color palettes — each sign gets a unique look based on name hash
+  const signPalettes = [
+    { bg: '#1a1a2e', text: '#f5edd8', border: '#c8a850' },  // Classic dark + gold
+    { bg: '#2d1b0e', text: '#f0e8d0', border: '#8b6914' },  // Walnut + brass
+    { bg: '#0d2b0d', text: '#ffffff', border: '#4a9e4a' },  // Forest green
+    { bg: '#1a1a3a', text: '#e8e8ff', border: '#6a6aff' },  // Navy blue
+    { bg: '#3a0a0a', text: '#ffd4a0', border: '#cc4444' },  // Burgundy + cream
+    { bg: '#f5f0e0', text: '#2a1a0a', border: '#8b7355' },  // Cream + dark text
+    { bg: '#1a2a3a', text: '#ffffff', border: '#50a0d0' },  // Slate + sky blue
+    { bg: '#2a0a2a', text: '#e8c8ff', border: '#9a4a9a' },  // Plum + lavender
+    { bg: '#0a1a2a', text: '#ffd700', border: '#c8a000' },  // Midnight + gold
+    { bg: '#3a2a1a', text: '#f5e6d0', border: '#d4a050' },  // Espresso + warm
+  ];
+
+  function hashName(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+
   function createSignTexture(name) {
     const cvs = document.createElement('canvas');
     const W = 512, H = 128;
     cvs.width = W; cvs.height = H;
     const ctx = cvs.getContext('2d');
 
-    // Sign panel background — dark with subtle material grain
+    const palette = signPalettes[hashName(name) % signPalettes.length];
+    const isLight = palette.bg.charAt(1) > '9';
+
+    // Background panel with gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-    bgGrad.addColorStop(0, '#1a1a2e');
-    bgGrad.addColorStop(0.5, '#1e1e34');
-    bgGrad.addColorStop(1, '#161628');
+    bgGrad.addColorStop(0, palette.bg);
+    bgGrad.addColorStop(1, palette.bg);
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // Surface texture noise (simulates painted metal/wood grain)
-    ctx.globalAlpha = 0.04;
-    for (let i = 0; i < 200; i++) {
-      ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000';
-      ctx.fillRect(Math.random() * W, Math.random() * H, Math.random() * 3 + 1, 1);
+    // Material grain
+    ctx.globalAlpha = 0.05;
+    for (let i = 0; i < 150; i++) {
+      ctx.fillStyle = isLight ? '#000' : '#fff';
+      ctx.fillRect(Math.random() * W, Math.random() * H, Math.random() * 4, 1);
     }
     ctx.globalAlpha = 1.0;
 
-    // Raised border with bevel effect
-    // Outer shadow (inset)
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(4, 4, W - 8, H - 8);
-    // Inner highlight (raised edge)
-    ctx.strokeStyle = '#c8b890';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(7, 7, W - 14, H - 14);
-    // Inner edge shadow
-    ctx.strokeStyle = 'rgba(200,184,144,0.3)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(9, 9, W - 18, H - 18);
+    // Border — thick with accent color
+    ctx.strokeStyle = palette.border;
+    ctx.lineWidth = 5;
+    ctx.strokeRect(5, 5, W - 10, H - 10);
 
-    // Text with subtle shadow for depth
+    // Inner shadow line
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(10, 10, W - 20, H - 20);
+
+    // Text
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    let fontSize = 42;
+    let fontSize = 44;
     ctx.font = '700 ' + fontSize + 'px sans-serif';
-    while (ctx.measureText(name).width > W - 50 && fontSize > 14) {
+    while (ctx.measureText(name).width > W - 60 && fontSize > 14) {
       fontSize -= 2;
       ctx.font = '700 ' + fontSize + 'px sans-serif';
     }
 
-    // Text drop shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    // Drop shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillText(name, W / 2 + 1, H / 2 + 2);
 
-    // Main text — warm cream
-    ctx.fillStyle = '#f5edd8';
+    // Main text
+    ctx.fillStyle = palette.text;
     ctx.fillText(name, W / 2, H / 2);
 
-    // Subtle top highlight on text (embossed effect)
-    ctx.globalAlpha = 0.15;
+    // Top highlight
+    ctx.globalAlpha = 0.08;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(name, W / 2, H / 2 - 1);
+    ctx.fillRect(6, 6, W - 12, H * 0.4);
     ctx.globalAlpha = 1.0;
-
-    // Top edge light catch (simulates overhead lighting on sign face)
-    const topLight = ctx.createLinearGradient(0, 0, 0, 20);
-    topLight.addColorStop(0, 'rgba(255,255,255,0.06)');
-    topLight.addColorStop(1, 'transparent');
-    ctx.fillStyle = topLight;
-    ctx.fillRect(8, 8, W - 16, 20);
 
     const tex = new THREE.CanvasTexture(cvs);
     tex.colorSpace = THREE.SRGBColorSpace;
