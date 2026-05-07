@@ -836,6 +836,94 @@ function rebuildScene(mode) {
 
 rebuildScene('textured');
 
+// Signs — SNIP-detected signage crops placed on building facades
+fetch('signs.json').then(r => r.json()).then(signsData => {
+  const mPerDegLat = 111320;
+  const mPerDegLon = 111320 * Math.cos(data.ref_lat * Math.PI / 180);
+
+  // Index building walls by building id for sign placement
+  const bldMap = {};
+  for (const bld of data.buildings) bldMap[bld.id] = bld;
+
+  for (const sign of signsData) {
+    const bld = bldMap[sign.building_id];
+    if (!bld) continue;
+
+    // Convert sign lat/lon to scene meters
+    const sx = (sign.lon - data.ref_lon) * mPerDegLon;
+    const sz = (sign.lat - data.ref_lat) * mPerDegLat;
+
+    // Find closest exterior wall
+    let bestWall = null, bestDist = Infinity;
+    for (const wall of bld.walls) {
+      if (!wall.is_exterior) continue;
+      const v = wall.vertices;
+      const wx = (v[0][0] + v[1][0]) / 2;
+      const wz = (v[0][2] + v[1][2]) / 2;
+      const d = (sx - wx) ** 2 + (sz - wz) ** 2;
+      if (d < bestDist) { bestDist = d; bestWall = wall; }
+    }
+    if (!bestWall) continue;
+
+    const v = bestWall.vertices;
+    const x0 = v[0][0], z0 = v[0][2], x1 = v[1][0], z1 = v[1][2];
+    const h = bestWall.height;
+    const dx = x1 - x0, dz = z1 - z0;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    if (len < 1) continue;
+
+    // Position sign at t along wall (project sign point onto wall edge)
+    let t = ((sx - x0) * dx + (sz - z0) * dz) / (dx * dx + dz * dz);
+    t = Math.max(0.1, Math.min(0.9, t));
+
+    // Sign dimensions (in meters)
+    const signW = Math.min(len * 0.4, 3.0);
+    const signH = signW * 0.4;
+    const signY = h * 0.72;
+
+    // Wall normal (outward)
+    const nx = -dz / len, nz = dx / len;
+    const offset = 0.08;
+
+    // Sign center position
+    const cx = x0 + t * dx + nx * offset;
+    const cz = z0 + t * dz + nz * offset;
+
+    // Create sign quad aligned to wall
+    const right_x = dx / len, right_z = dz / len;
+    const hw = signW / 2, hh = signH / 2;
+
+    const positions = new Float32Array([
+      cx - right_x * hw, signY - hh, cz - right_z * hw,
+      cx + right_x * hw, signY - hh, cz + right_z * hw,
+      cx + right_x * hw, signY + hh, cz + right_z * hw,
+      cx - right_x * hw, signY - hh, cz - right_z * hw,
+      cx + right_x * hw, signY + hh, cz + right_z * hw,
+      cx - right_x * hw, signY + hh, cz - right_z * hw,
+    ]);
+    const uvs = new Float32Array([0,0, 1,0, 1,1, 0,0, 1,1, 0,1]);
+
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geom.computeVertexNormals();
+
+    const tex = textureLoader.load(sign.image_path);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex, roughness: 0.5, metalness: 0,
+      side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+    });
+
+    const mesh = new THREE.Mesh(geom, mat);
+    // Offset to terrain height like the building
+    const terrainY = getTerrainElevation(bld.centroid_m[0], bld.centroid_m[1]);
+    mesh.position.y = terrainY;
+    scene.add(mesh);
+  }
+}).catch(() => {});
+
 // Ground features — Overture land_use/land_cover polygons
 // Mapbox Streets v12 land use palette
 const groundFeatureColors = {
