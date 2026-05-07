@@ -697,13 +697,17 @@ function createBuilding(bld, mode) {
       });
     } else if (mode === 'textured' || mode === 'color') {
       const facadeTex = createProceduralFacade(style, wall);
+      // PBR roughness varies by material
+      const matRoughness = style.material === 'glass' ? 0.1 :
+        style.material === 'stucco' ? 0.92 :
+        style.material === 'stone' ? 0.88 :
+        style.material && style.material.includes('brick') ? 0.85 : 0.8;
+      const matMetalness = style.material === 'glass' ? 0.1 :
+        style.material === 'metal' ? 0.6 : 0.02;
       material = new THREE.MeshStandardMaterial({
-        map: facadeTex, roughness: 0.8, metalness: 0.01,
+        map: facadeTex, roughness: matRoughness, metalness: matMetalness,
         side: THREE.DoubleSide
       });
-      if (!bld.has_mapillary && mode === 'textured') {
-        material.color = new THREE.Color(0.92, 0.92, 0.92);
-      }
     }
 
     const mesh = new THREE.Mesh(geom, material);

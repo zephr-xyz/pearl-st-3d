@@ -1,0 +1,217 @@
+[
+  {
+    "building_id": "a9e1cc82-e147-4256-88eb-78be4aea3000",
+    "poi_name": "Bliss",
+    "image_id": "193969942566478",
+    "face_angle": 3.831384701748675,
+    "distance": 19.1613190174247,
+    "camera_heading": 356.20832827405,
+    "facade_path": "/private/tmp/pearl-st-3d/data/facades/a9e1cc82_facade.jpg",
+    "facade_size": [
+      1665,
+      1075
+    ],
+    "building_height": 7.0,
+    "windows": {
+      "count": 1,
+      "rows": 1,
+      "cols": 1
+    },
+    "entrances": {
+      "count": 2,
+      "positions": [
+        0.2816816816816817,
+        0.17237237237237238
+      ]
+    }
+  },
+  {
+    "building_id": "968fdf3f-8839-4b23-9576-8d4b67a9dc2c",
+    "poi_name": "Paradise Found Records & Music",
+    "image_id": "1204965308276716",
+    "face_angle": 52.7388914197287,
+    "distance": 22.438260966577296,
+    "camera_heading": 291.72949898609,
+    "facade_path": "/private/tmp/pearl-st-3d/data/facades/968fdf3f_facade.jpg",
+    "facade_size": [
+      1571,
+      1075
+    ],
+    "building_height": 7.0,
+    "windows": {
+      "count": 0,
+      "rows": 0,
+      "cols": 0
+    },
+    "entrances": {
+      "count": 0,
+      "positions": []
+    }
+  },
+  {
+    "building_id": "67797069-8ea7-4f97-8280-4ab9392d1bdf",
+    "poi_name": "Mountain Sun Pub & Brewery",
+    "image_id": "763169657718812",
+    "face_angle": 22.674877096884188,
+    "distance": 28.56639477699965,
+    "camera_heading": 39.141998088833,
+    "facade_path": "/private/tmp/pearl-st-3d/data/facades/67797069_facade.jpg",
+    "facade_size": [
+      1455,
+      1075
+    ],
+    "building_height": 7.0,
+    "windows": {
+      "count": 2,
+      "rows": 2,
+      "cols": 1
+    },
+    "entrances": {
+      "count": 0,
+      "positions": []
+    }
+  },
+  {
+    "building_id": "68f5bdb6-4579-41ee-913e-ceb8f7534032",
+    "poi_name": "sweetgreen",
+    "image_id": "4091942594391182",
+    "face_angle": 2.583710900224361,
+    "distance": 37.47795376654336,
+    "camera_heading": 35.558099455622,
+    "facade_path": "/private/tmp/pearl-st-3d/data/facades/68f5bdb6_facade.jpg",
+    "facade_size": [
+      1351,
+      1075
+    ],
+    "building_height": 7.197900295257568,
+    "windows": {
+      "count": 0,
+      "rows": 0,
+      "cols": 0
+    },
+    "entrances": {
+      "count": 0,
+      "positions": []
+    }
+  },
+  {
+    "building_id": "dd7e2962-f6e5-4d99-923a-01c837c559e5",
+    "poi_name": "Snooze, an A.M. Eatery",
+    "image_id": "3094065900765545",
+    "face_angle": 1.0860690754933842,
+    "distance": 28.06883005665483,
+    "camera_heading": 7.0023788027646,
+    "facade_path": "/private/tmp/pearl-st-3d/data/facades/dd7e2962_facade.jpg",
+    "facade_size": [
+      1461,
+      1075
+    ],
+    "building_height": 7.0,
+    "windows": {
+      "count": 1,
+      "rows": 1,
+      "cols": 1
+    },
+    "entrances": {
+      "count": 0,
+      "positions": []
+    }
+  },
+  {
+    "building_id": "f910024b-e0f8-4886-b0ed-c57b5022d29d",
+    "poi_name": "Pedestrian Shops",
+    "image_id": "929961041570788",
+    "face_angle": 8.378245994406257,
+    "distance": 33.08447537603859,
+    "camera_heading": 323.40168762207,
+    "facade_path": "/private/tmp/pearl-st-3d/data/facades/f910024b_facade.jpg",
+    "facade_size": [
+      1395,
+      1075
+    ],
+    "building_height": 7.0,
+    "windows": {
+      "count": 2,
+      "rows": 1,
+      "cols": 2
+    },
+    "entrances": {
+      "count": 2,
+      "positions": [
+        0.850179211469534,
+        0.2885304659498208
+      ]
+    }
+  },
+  {
+    "building_id": "d661159e-04f0-4494-b9fe-131d83993b40",
+    "poi_name": "Pearl Street Mall",
+    "image_id": "256601106197949",
+    "face_angle": 2.3747529401964584,
+    "distance": 17.020422955600747,
+    "camera_heading": 334.68917548682,
+    "facade_path": "/private/tmp/pearl-st-3d/data/facades/d661159e_facade.jpg",
+    "facade_size": [
+      1745,
+      1075
+    ],
+    "building_height": 7.0,
+    "windows": {
+      "count": 0,
+      "rows": 0,
+      "cols": 0
+    },
+    "entrances": {
+      "count": 0,
+      "positions": []
+    }
+  },
+  {
+    "building_id": "56983a84-fcd2-49f1-9036-ca38d3b0fce1",
+    "poi_name": "Lush Cosmetics Boulder - Pearl St",
+    "image_id": "483840999604492",
+    "face_angle": 3.404883619823977,
+    "distance": 33.229197802697364,
+    "camera_heading": 330.84325335907,
+    "facade_path": "/private/tmp/pearl-st-3d/data/facades/56983a84_facade.jpg",
+    "facade_size": [
+      1393,
+      1075
+    ],
+    "building_height": 7.0,
+    "windows": {
+      "count": 0,
+      "rows": 0,
+      "cols": 0
+    },
+    "entrances": {
+      "count": 1,
+      "positions": [
+        0.04379038047379756
+      ]
+    }
+  },
+  {
+    "building_id": "6cf6ba7b-4258-44dc-85f7-7c6ac3d89893",
+    "poi_name": "Garage Sale Vintage",
+    "image_id": "1778415766139503",
+    "face_angle": 30.68406493239914,
+    "distance": 16.209228655680473,
+    "camera_heading": 6.7799231344096,
+    "facade_path": "/private/tmp/pearl-st-3d/data/facades/6cf6ba7b_facade.jpg",
+    "facade_size": [
+      1783,
+      1075
+    ],
+    "building_height": 7.0,
+    "windows": {
+      "count": 2,
+      "rows": 1,
+      "cols": 2
+    },
+    "entrances": {
+      "count": 0,
+      "positions": []
+    }
+  }
+]
