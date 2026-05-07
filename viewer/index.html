@@ -1425,7 +1425,7 @@ for (const feat of (data.ground_features || [])) {
 
 // Roads — rendered as flat quads
 // Mapbox Streets — white roads, warm-toned pedestrian areas
-const roadColors = { tertiary: 0x404040, residential: 0x484848, primary: 0x383838, footway: 0xc8b8a0, pedestrian: 0xa0614a, service: 0x505050 };
+const roadColors = { tertiary: 0x404040, residential: 0x484848, primary: 0x383838, footway: 0xd4c8b0, pedestrian: 0xd4c8b0, service: 0x505050 };
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 1.5 : 2.5) / 2;
@@ -1458,8 +1458,8 @@ for (const road of (data.roads || [])) {
   scene.add(rMesh);
 }
 
-// Sidewalks — elevated concrete surfaces alongside vehicular roads
-const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xc8c0b4, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+// Sidewalks — flat alongside vehicular roads (rendered below road level to avoid z-fighting)
+const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xc8c0b4, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 });
 const curbMat = new THREE.MeshStandardMaterial({ color: 0x989088, roughness: 0.8, metalness: 0, side: THREE.DoubleSide });
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
@@ -1467,8 +1467,8 @@ for (const road of (data.roads || [])) {
 
   const roadHW = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'primary' ? 6 : 3) / 2;
   const swWidth = 2.0;
-  const swY = 0.12;
-  const curbH = 0.12;
+  const swY = 0.01;
+  const curbH = 0.10;
   const gap = 0.3;
 
   for (let side = -1; side <= 1; side += 2) {
@@ -1517,6 +1517,47 @@ for (const road of (data.roads || [])) {
       const curbMesh = new THREE.Mesh(curbGeom, curbMat);
       curbMesh.receiveShadow = true;
       scene.add(curbMesh);
+    }
+  }
+}
+
+// Crosswalks — white striped markings across roads
+const crosswalkMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.7, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+for (const cw of (data.crosswalks || [])) {
+  if (cw.points.length < 2) continue;
+  for (let i = 0; i < cw.points.length - 1; i++) {
+    const [x0, z0] = cw.points[i];
+    const [x1, z1] = cw.points[i + 1];
+    const dx = x1 - x0, dz = z1 - z0;
+    const segLen = Math.sqrt(dx * dx + dz * dz);
+    if (segLen < 0.5) continue;
+    const ux = dx / segLen, uz = dz / segLen;
+    const nx = -uz, nz = ux;
+    const stripeW = 0.5, stripeGap = 0.6, stripeLen = 2.5;
+    const numStripes = Math.floor(segLen / (stripeW + stripeGap));
+    const cwVerts = [];
+    for (let s = 0; s < numStripes; s++) {
+      const t = (s + 0.5) * (stripeW + stripeGap);
+      const cx = x0 + ux * t, cz = z0 + uz * t;
+      const hlf = stripeLen / 2;
+      const hw = stripeW / 2;
+      const ey = getTerrainElevation(cx, cz) + 0.03;
+      cwVerts.push(
+        cx + ux * hw - nx * hlf, ey, cz + uz * hw - nz * hlf,
+        cx + ux * hw + nx * hlf, ey, cz + uz * hw + nz * hlf,
+        cx - ux * hw + nx * hlf, ey, cz - uz * hw + nz * hlf,
+        cx + ux * hw - nx * hlf, ey, cz + uz * hw - nz * hlf,
+        cx - ux * hw + nx * hlf, ey, cz - uz * hw + nz * hlf,
+        cx - ux * hw - nx * hlf, ey, cz - uz * hw - nz * hlf
+      );
+    }
+    if (cwVerts.length > 0) {
+      const cwGeom = new THREE.BufferGeometry();
+      cwGeom.setAttribute('position', new THREE.Float32BufferAttribute(cwVerts, 3));
+      cwGeom.computeVertexNormals();
+      const cwMesh = new THREE.Mesh(cwGeom, crosswalkMat);
+      cwMesh.receiveShadow = true;
+      scene.add(cwMesh);
     }
   }
 }
