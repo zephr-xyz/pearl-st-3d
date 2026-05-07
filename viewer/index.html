@@ -121,7 +121,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const canvas = document.getElementById('canvas');
 const tooltip = document.getElementById('tooltip');
@@ -144,9 +143,9 @@ camera.position.set(180, 40, -120);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.8;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -166,7 +165,7 @@ scene.add(ambient);
 const sun = new THREE.DirectionalLight(0xffffff, 1.2);
 sun.position.set(80, 60, 50);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(4096, 4096);
 sun.shadow.camera.left = -200;
 sun.shadow.camera.right = 200;
 sun.shadow.camera.top = 200;
@@ -674,77 +673,47 @@ function createBuilding(bld, mode) {
 
   const style = bld.style || {};
 
-  if (mode === 'wireframe') {
-    // Wireframe: merge all walls into one geometry
-    const allPos = [];
-    for (const wall of bld.walls) {
-      for (const v of wall.vertices) allPos.push(v[0], v[1], v[2]);
-    }
+  for (const wall of bld.walls) {
+    const positions = new Float32Array(wall.vertices.flat());
+    const uvs = new Float32Array(wall.uvs.flat());
+
     const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(allPos, 3));
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geom.computeVertexNormals();
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0x3b82f6, wireframe: true, opacity: 0.6, transparent: true, side: THREE.DoubleSide
-    });
-    group.add(new THREE.Mesh(geom, mat));
-  } else {
-    // Textured: create atlas texture for all exterior walls
-    const extWalls = bld.walls.filter(w => w.is_exterior);
-    if (extWalls.length > 0) {
-      // Build texture atlas — stack facade textures vertically
-      const ATLAS_W = 640;
-      const wallHeights = extWalls.map(w => Math.round(ATLAS_W * (w.height / Math.max(w.length, 1))));
-      const ATLAS_H = wallHeights.reduce((a, b) => a + b, 0);
 
-      const atlasCanvas = document.createElement('canvas');
-      atlasCanvas.width = ATLAS_W;
-      atlasCanvas.height = ATLAS_H;
-      const atlasCtx = atlasCanvas.getContext('2d');
+    let material;
 
-      // Render each wall's facade into atlas strip
-      let yOffset = 0;
-      const uvRanges = [];
-      for (let wi = 0; wi < extWalls.length; wi++) {
-        const wall = extWalls[wi];
-        const wH = wallHeights[wi];
-        const facadeTex = createProceduralFacade(style, wall);
-        atlasCtx.drawImage(facadeTex.image, 0, yOffset, ATLAS_W, wH);
-        uvRanges.push({ y0: yOffset / ATLAS_H, y1: (yOffset + wH) / ATLAS_H });
-        yOffset += wH;
-        facadeTex.dispose();
-      }
-
-      // Merge wall geometry with remapped UVs
-      const mergedPos = [];
-      const mergedUvs = [];
-      for (let wi = 0; wi < extWalls.length; wi++) {
-        const wall = extWalls[wi];
-        const range = uvRanges[wi];
-        for (const v of wall.vertices) mergedPos.push(v[0], v[1], v[2]);
-        for (const uv of wall.uvs) {
-          mergedUvs.push(uv[0], range.y0 + uv[1] * (range.y1 - range.y0));
-        }
-      }
-
-      const geom = new THREE.BufferGeometry();
-      geom.setAttribute('position', new THREE.Float32BufferAttribute(mergedPos, 3));
-      geom.setAttribute('uv', new THREE.Float32BufferAttribute(mergedUvs, 2));
-      geom.computeVertexNormals();
-
-      const atlasTex = new THREE.CanvasTexture(atlasCanvas);
-      atlasTex.colorSpace = THREE.SRGBColorSpace;
+    if (mode === 'wireframe') {
+      material = new THREE.MeshBasicMaterial({
+        color: wall.is_exterior ? 0x3b82f6 : 0xc9bdb1,
+        wireframe: true, opacity: wall.is_exterior ? 0.6 : 0.3, transparent: true,
+        side: THREE.DoubleSide
+      });
+    } else if (!wall.is_exterior) {
+      material = new THREE.MeshStandardMaterial({
+        color: 0xc9bdb1, roughness: 0.95, metalness: 0,
+        side: THREE.DoubleSide
+      });
+    } else if (mode === 'textured' || mode === 'color') {
+      const facadeTex = createProceduralFacade(style, wall);
+      // PBR roughness varies by material
       const matRoughness = style.material === 'glass' ? 0.1 :
         style.material === 'stucco' ? 0.92 :
         style.material === 'stone' ? 0.88 :
         style.material && style.material.includes('brick') ? 0.85 : 0.8;
-      const mat = new THREE.MeshStandardMaterial({
-        map: atlasTex, roughness: matRoughness, metalness: 0.02, side: THREE.DoubleSide
+      const matMetalness = style.material === 'glass' ? 0.1 :
+        style.material === 'metal' ? 0.6 : 0.02;
+      material = new THREE.MeshStandardMaterial({
+        map: facadeTex, roughness: matRoughness, metalness: matMetalness,
+        side: THREE.DoubleSide
       });
-      const mesh = new THREE.Mesh(geom, mat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      group.add(mesh);
     }
+
+    const mesh = new THREE.Mesh(geom, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
   }
 
   // 3D Awnings
@@ -1230,42 +1199,39 @@ for (const feat of (data.ground_features || [])) {
   }
 }
 
-// Roads — merged by color class into few draw calls
-{
-  const roadColors = { tertiary: 0xffffff, residential: 0xffffff, primary: 0xffffff, footway: 0xf0ebe0, pedestrian: 0xf5f0e8, service: 0xf8f8f8 };
-  const roadVertsByColor = {};
-  for (const road of (data.roads || [])) {
-    if (road.points.length < 2) continue;
-    const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 1.5 : 2.5) / 2;
-    const color = roadColors[road.class] || 0x888888;
-    const y = road.class === 'footway' || road.class === 'pedestrian' ? 0.04 : 0.02;
-    if (!roadVertsByColor[color]) roadVertsByColor[color] = [];
+// Roads — rendered as flat quads
+// Mapbox Streets — white roads, warm-toned pedestrian areas
+const roadColors = { tertiary: 0xffffff, residential: 0xffffff, primary: 0xffffff, footway: 0xf0ebe0, pedestrian: 0xf5f0e8, service: 0xf8f8f8 };
+for (const road of (data.roads || [])) {
+  if (road.points.length < 2) continue;
+  const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 1.5 : 2.5) / 2;
+  const color = roadColors[road.class] || 0x888888;
+  const y = road.class === 'footway' || road.class === 'pedestrian' ? 0.04 : 0.02;
 
-    for (let i = 0; i < road.points.length - 1; i++) {
-      const [x0, z0] = road.points[i];
-      const [x1, z1] = road.points[i + 1];
-      const dx = x1 - x0, dz = z1 - z0;
-      const len = Math.sqrt(dx*dx + dz*dz);
-      if (len < 0.3) continue;
-      const nx = -dz / len * hw, nz = dx / len * hw;
-      const y0t = getTerrainElevation(x0, z0) + y;
-      const y1t = getTerrainElevation(x1, z1) + y;
-      roadVertsByColor[color].push(
-        x0 + nx, y0t, z0 + nz, x1 + nx, y1t, z1 + nz, x1 - nx, y1t, z1 - nz,
-        x0 + nx, y0t, z0 + nz, x1 - nx, y1t, z1 - nz, x0 - nx, y0t, z0 - nz
-      );
-    }
+  const verts = [];
+  for (let i = 0; i < road.points.length - 1; i++) {
+    const [x0, z0] = road.points[i];
+    const [x1, z1] = road.points[i + 1];
+    const dx = x1 - x0, dz = z1 - z0;
+    const len = Math.sqrt(dx*dx + dz*dz);
+    if (len < 0.3) continue;
+    const nx = -dz / len * hw, nz = dx / len * hw;
+    const y0t = getTerrainElevation(x0, z0) + y;
+    const y1t = getTerrainElevation(x1, z1) + y;
+
+    verts.push(
+      x0 + nx, y0t, z0 + nz, x1 + nx, y1t, z1 + nz, x1 - nx, y1t, z1 - nz,
+      x0 + nx, y0t, z0 + nz, x1 - nx, y1t, z1 - nz, x0 - nx, y0t, z0 - nz
+    );
   }
-  for (const [color, verts] of Object.entries(roadVertsByColor)) {
-    if (verts.length === 0) continue;
-    const rGeom = new THREE.BufferGeometry();
-    rGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-    rGeom.computeVertexNormals();
-    const rMat = new THREE.MeshStandardMaterial({ color: parseInt(color), roughness: 0.9, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
-    const rMesh = new THREE.Mesh(rGeom, rMat);
-    rMesh.receiveShadow = true;
-    scene.add(rMesh);
-  }
+  if (verts.length === 0) continue;
+  const rGeom = new THREE.BufferGeometry();
+  rGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  rGeom.computeVertexNormals();
+  const rMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+  const rMesh = new THREE.Mesh(rGeom, rMat);
+  rMesh.receiveShadow = true;
+  scene.add(rMesh);
 }
 
 // Sidewalks — elevated concrete surfaces alongside vehicular roads
@@ -1331,210 +1297,146 @@ for (const road of (data.roads || [])) {
   }
 }
 
-// Trees — merged geometry for performance (one mesh for trunks, one per canopy color)
-{
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 });
-  const canopyColors = [0x7ac07a, 0x6db86d, 0x80c880, 0x5aaa5a, 0x70b870, 0x88cc88];
-  const canopyMats = canopyColors.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, flatShading: true }));
+// Trees — varied deciduous with multi-cluster canopy
+const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 });
+const canopyColors = [0x7ac07a, 0x6db86d, 0x80c880, 0x5aaa5a, 0x70b870, 0x88cc88];
+for (const tree of (data.trees || [])) {
+  const seed = Math.abs(tree.x * 7 + tree.y * 13) | 0;
+  const scale = 0.7 + (seed % 10) / 15;
+  const trunkH = 2.5 * scale + (seed % 5) * 0.2;
+  const trunkR = 0.12 + (seed % 3) * 0.04;
 
-  const trunkGeoms = [];
-  const canopyGeomsByColor = canopyColors.map(() => []);
+  const treeElev = getTerrainElevation(tree.x, tree.y);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.7, trunkR, trunkH, 8), trunkMat);
+  trunk.position.set(tree.x, treeElev + trunkH / 2, tree.y);
+  trunk.castShadow = true;
+  scene.add(trunk);
 
-  for (const tree of (data.trees || [])) {
-    const seed = Math.abs(tree.x * 7 + tree.y * 13) | 0;
-    const scale = 0.7 + (seed % 10) / 15;
-    const trunkH = 2.5 * scale + (seed % 5) * 0.2;
-    const trunkR = 0.12 + (seed % 3) * 0.04;
-    const treeElev = getTerrainElevation(tree.x, tree.y);
-
-    const tGeom = new THREE.CylinderGeometry(trunkR * 0.7, trunkR, trunkH, 6);
-    tGeom.translate(tree.x, treeElev + trunkH / 2, tree.y);
-    trunkGeoms.push(tGeom);
-
-    const colorIdx = seed % canopyColors.length;
-    const clusters = 3 + (seed % 3);
-    const baseY = treeElev + trunkH + 1.2 * scale;
-    for (let c = 0; c < clusters; c++) {
-      const cr = (1.2 + (c % 2) * 0.5) * scale;
-      const angle = (c / clusters) * Math.PI * 2 + seed;
-      const offX = Math.cos(angle) * 0.6 * scale;
-      const offZ = Math.sin(angle) * 0.6 * scale;
-      const offY = (c < 2 ? 0.8 : 0) * scale;
-      const cGeom = new THREE.DodecahedronGeometry(cr, 1);
-      cGeom.rotateX(seed + c);
-      cGeom.rotateY(seed * 0.7 + c);
-      cGeom.translate(tree.x + offX, baseY + offY, tree.y + offZ);
-      canopyGeomsByColor[colorIdx].push(cGeom);
-    }
-  }
-
-  if (trunkGeoms.length > 0) {
-    const merged = mergeGeometries(trunkGeoms, false);
-    const mesh = new THREE.Mesh(merged, trunkMat);
-    mesh.castShadow = true;
-    scene.add(mesh);
-    trunkGeoms.forEach(g => g.dispose());
-  }
-  for (let ci = 0; ci < canopyColors.length; ci++) {
-    if (canopyGeomsByColor[ci].length > 0) {
-      const merged = mergeGeometries(canopyGeomsByColor[ci], false);
-      const mesh = new THREE.Mesh(merged, canopyMats[ci]);
-      mesh.castShadow = true;
-      scene.add(mesh);
-      canopyGeomsByColor[ci].forEach(g => g.dispose());
-    }
+  const cColor = canopyColors[seed % canopyColors.length];
+  const cMat = new THREE.MeshStandardMaterial({ color: cColor, roughness: 0.85, flatShading: true });
+  const clusters = 3 + (seed % 3);
+  const baseY = treeElev + trunkH + 1.2 * scale;
+  for (let c = 0; c < clusters; c++) {
+    const cr = (1.2 + (c % 2) * 0.5) * scale;
+    const angle = (c / clusters) * Math.PI * 2 + seed;
+    const offX = Math.cos(angle) * 0.6 * scale;
+    const offZ = Math.sin(angle) * 0.6 * scale;
+    const offY = (c < 2 ? 0.8 : 0) * scale;
+    const cluster = new THREE.Mesh(new THREE.DodecahedronGeometry(cr, 1), cMat);
+    cluster.position.set(tree.x + offX, baseY + offY, tree.y + offZ);
+    cluster.rotation.set(seed + c, seed * 0.7 + c, 0);
+    cluster.castShadow = true;
+    scene.add(cluster);
   }
 }
 
-// Benches — merged into two draw calls (wood + metal)
-{
-  const benchWoodMat = new THREE.MeshStandardMaterial({ color: 0xa08060, roughness: 0.8 });
-  const benchMetalMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 });
-  const woodGeoms = [];
-  const metalGeoms = [];
+// Benches — seat + backrest + metal frame
+const benchWoodMat = new THREE.MeshStandardMaterial({ color: 0xa08060, roughness: 0.8 });
+const benchMetalMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 });
+for (const bench of (data.benches || [])) {
+  const bGroup = new THREE.Group();
+  const angle = (Math.abs(bench.x * 3 + bench.y * 7) | 0) % 2 === 0 ? 0 : Math.PI / 2;
+  bGroup.rotation.y = angle;
 
-  for (const bench of (data.benches || [])) {
-    const angle = (Math.abs(bench.x * 3 + bench.y * 7) | 0) % 2 === 0 ? 0 : Math.PI / 2;
-    const elev = getTerrainElevation(bench.x, bench.y);
-    const m = new THREE.Matrix4().makeRotationY(angle).setPosition(bench.x, elev, bench.y);
-
-    for (let s = 0; s < 5; s++) {
-      const g = new THREE.BoxGeometry(1.4, 0.04, 0.08);
-      g.applyMatrix4(new THREE.Matrix4().makeTranslation(0, 0.45, -0.16 + s * 0.08));
-      g.applyMatrix4(m);
-      woodGeoms.push(g);
-    }
-    for (let s = 0; s < 3; s++) {
-      const g = new THREE.BoxGeometry(1.4, 0.04, 0.08);
-      g.applyMatrix4(new THREE.Matrix4().makeRotationX(0.15).setPosition(0, 0.58 + s * 0.1, -0.2));
-      g.applyMatrix4(m);
-      woodGeoms.push(g);
-    }
-    for (let lx = -1; lx <= 1; lx += 2) {
-      for (let lz = -1; lz <= 1; lz += 2) {
-        const g = new THREE.CylinderGeometry(0.02, 0.02, 0.45, 6);
-        g.translate(lx * 0.55, 0.22, lz * 0.12);
-        g.applyMatrix4(m);
-        metalGeoms.push(g);
-      }
-    }
-    for (let ax = -1; ax <= 1; ax += 2) {
-      const g = new THREE.BoxGeometry(0.04, 0.04, 0.35);
-      g.translate(ax * 0.65, 0.55, -0.05);
-      g.applyMatrix4(m);
-      metalGeoms.push(g);
+  // Seat (5 slats)
+  for (let s = 0; s < 5; s++) {
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.08), benchWoodMat);
+    slat.position.set(0, 0.45, -0.16 + s * 0.08);
+    bGroup.add(slat);
+  }
+  // Backrest (3 slats)
+  for (let s = 0; s < 3; s++) {
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.08), benchWoodMat);
+    slat.position.set(0, 0.58 + s * 0.1, -0.2);
+    slat.rotation.x = 0.15;
+    bGroup.add(slat);
+  }
+  // Metal legs (4)
+  for (let lx = -1; lx <= 1; lx += 2) {
+    for (let lz = -1; lz <= 1; lz += 2) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.45, 6), benchMetalMat);
+      leg.position.set(lx * 0.55, 0.22, lz * 0.12);
+      bGroup.add(leg);
     }
   }
+  // Armrests
+  for (let ax = -1; ax <= 1; ax += 2) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.35), benchMetalMat);
+    arm.position.set(ax * 0.65, 0.55, -0.05);
+    bGroup.add(arm);
+  }
 
-  if (woodGeoms.length > 0) {
-    const mesh = new THREE.Mesh(mergeGeometries(woodGeoms, false), benchWoodMat);
-    mesh.castShadow = true;
-    scene.add(mesh);
-    woodGeoms.forEach(g => g.dispose());
-  }
-  if (metalGeoms.length > 0) {
-    const mesh = new THREE.Mesh(mergeGeometries(metalGeoms, false), benchMetalMat);
-    mesh.castShadow = true;
-    scene.add(mesh);
-    metalGeoms.forEach(g => g.dispose());
-  }
+  bGroup.position.set(bench.x, getTerrainElevation(bench.x, bench.y), bench.y);
+  bGroup.traverse(c => { if (c.isMesh) c.castShadow = true; });
+  scene.add(bGroup);
 }
 
-// Bike racks — merged into one draw call
-{
-  const rackMat = new THREE.MeshStandardMaterial({ color: 0x707070, roughness: 0.35, metalness: 0.8 });
-  const rackGeoms = [];
+// Bike racks — inverted-U staple style
+const rackMat = new THREE.MeshStandardMaterial({ color: 0x707070, roughness: 0.35, metalness: 0.8 });
+for (const rack of (data.bike_racks || [])) {
+  const rGroup = new THREE.Group();
   const pipeR = 0.025;
-
-  for (const rack of (data.bike_racks || [])) {
-    const angle = (Math.abs(rack.x * 5 + rack.y * 11) | 0) % 2 === 0 ? 0 : Math.PI / 2;
-    const elev = getTerrainElevation(rack.x, rack.y);
-    const m = new THREE.Matrix4().makeRotationY(angle).setPosition(rack.x, elev, rack.y);
-
-    for (let side = -1; side <= 1; side += 2) {
-      const g = new THREE.CylinderGeometry(pipeR, pipeR, 0.75, 6);
-      g.translate(side * 0.2, 0.375, 0);
-      g.applyMatrix4(m);
-      rackGeoms.push(g);
-    }
-    const tg = new THREE.TorusGeometry(0.2, pipeR, 6, 8, Math.PI);
-    tg.rotateZ(Math.PI);
-    tg.rotateY(Math.PI / 2);
-    tg.translate(0, 0.75, 0);
-    tg.applyMatrix4(m);
-    rackGeoms.push(tg);
+  // U-shape: two vertical posts + semicircle top
+  for (let side = -1; side <= 1; side += 2) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, 0.75, 8), rackMat);
+    post.position.set(side * 0.2, 0.375, 0);
+    rGroup.add(post);
   }
+  const curve = new THREE.Mesh(new THREE.TorusGeometry(0.2, pipeR, 8, 12, Math.PI), rackMat);
+  curve.position.set(0, 0.75, 0);
+  curve.rotation.z = Math.PI;
+  curve.rotation.y = Math.PI / 2;
+  rGroup.add(curve);
 
-  if (rackGeoms.length > 0) {
-    const mesh = new THREE.Mesh(mergeGeometries(rackGeoms, false), rackMat);
-    mesh.castShadow = true;
-    scene.add(mesh);
-    rackGeoms.forEach(g => g.dispose());
-  }
+  const angle = (Math.abs(rack.x * 5 + rack.y * 11) | 0) % 2 === 0 ? 0 : Math.PI / 2;
+  rGroup.rotation.y = angle;
+  rGroup.position.set(rack.x, getTerrainElevation(rack.x, rack.y), rack.y);
+  rGroup.traverse(c => { if (c.isMesh) c.castShadow = true; });
+  scene.add(rGroup);
 }
 
-// Street lamps — merged into two draw calls (poles + glows)
-{
-  const lampPoleMat = new THREE.MeshStandardMaterial({ color: 0x5a5a5a, roughness: 0.4, metalness: 0.6 });
-  const lampGlowMat = new THREE.MeshStandardMaterial({ color: 0xfff8e0, emissive: 0xfff0c0, emissiveIntensity: 0.3, roughness: 0.2 });
-  const poleGeoms = [];
-  const glowGeoms = [];
+// Street lamps — placed on sidewalks alongside roads
+const lampPoleMat = new THREE.MeshStandardMaterial({ color: 0x5a5a5a, roughness: 0.4, metalness: 0.6 });
+const lampGlowMat = new THREE.MeshStandardMaterial({ color: 0xfff8e0, emissive: 0xfff0c0, emissiveIntensity: 0.3, roughness: 0.2 });
+for (const road of (data.roads || [])) {
+  if (road.class !== 'tertiary' && road.class !== 'residential' && road.class !== 'primary') continue;
+  if (road.points.length < 2) continue;
+  let accum = 12;
+  const spacing = 30;
+  const roadHW = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : 6) / 2;
+  const lampOffset = roadHW + 0.3 + 1.0;
+  for (let i = 0; i < road.points.length - 1; i++) {
+    const [x0, z0] = road.points[i];
+    const [x1, z1] = road.points[i + 1];
+    const dx = x1 - x0, dz = z1 - z0;
+    const segLen = Math.sqrt(dx*dx + dz*dz);
+    if (segLen < 1) continue;
+    const nx = -dz / segLen, nz = dx / segLen;
+    while (accum < segLen) {
+      const t = accum / segLen;
+      const px = x0 + dx * t, pz = z0 + dz * t;
+      const side = ((i + Math.floor(accum / spacing)) % 2 === 0) ? 1 : -1;
+      const lx = px + nx * lampOffset * side, lz = pz + nz * lampOffset * side;
 
-  for (const road of (data.roads || [])) {
-    if (road.class !== 'tertiary' && road.class !== 'residential' && road.class !== 'primary') continue;
-    if (road.points.length < 2) continue;
-    let accum = 12;
-    const spacing = 30;
-    const roadHW = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : 6) / 2;
-    const lampOffset = roadHW + 0.3 + 1.0;
-    for (let i = 0; i < road.points.length - 1; i++) {
-      const [x0, z0] = road.points[i];
-      const [x1, z1] = road.points[i + 1];
-      const dx = x1 - x0, dz = z1 - z0;
-      const segLen = Math.sqrt(dx*dx + dz*dz);
-      if (segLen < 1) continue;
-      const nx = -dz / segLen, nz = dx / segLen;
-      while (accum < segLen) {
-        const t = accum / segLen;
-        const px = x0 + dx * t, pz = z0 + dz * t;
-        const side = ((i + Math.floor(accum / spacing)) % 2 === 0) ? 1 : -1;
-        const lx = px + nx * lampOffset * side, lz = pz + nz * lampOffset * side;
-        const elev = getTerrainElevation(lx, lz);
-        const rot = Math.atan2(dx, dz);
-        const m = new THREE.Matrix4().makeRotationY(rot).setPosition(lx, elev, lz);
+      const lGroup = new THREE.Group();
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 4.5, 8), lampPoleMat);
+      pole.position.y = 2.25;
+      lGroup.add(pole);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 6), lampPoleMat);
+      arm.position.set(0.4, 4.3, 0);
+      arm.rotation.z = Math.PI / 2.5;
+      lGroup.add(arm);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), lampGlowMat);
+      lamp.position.set(0.7, 4.2, 0);
+      lGroup.add(lamp);
 
-        const pole = new THREE.CylinderGeometry(0.04, 0.06, 4.5, 6);
-        pole.translate(0, 2.25, 0);
-        pole.applyMatrix4(m);
-        poleGeoms.push(pole);
-
-        const arm = new THREE.CylinderGeometry(0.025, 0.025, 1.0, 5);
-        arm.rotateZ(Math.PI / 2.5);
-        arm.translate(0.4, 4.3, 0);
-        arm.applyMatrix4(m);
-        poleGeoms.push(arm);
-
-        const lamp = new THREE.SphereGeometry(0.15, 6, 4);
-        lamp.translate(0.7, 4.2, 0);
-        lamp.applyMatrix4(m);
-        glowGeoms.push(lamp);
-
-        accum += spacing;
-      }
-      accum -= segLen;
+      lGroup.position.set(lx, getTerrainElevation(lx, lz), lz);
+      lGroup.rotation.y = Math.atan2(dx, dz);
+      lGroup.traverse(c => { if (c.isMesh) c.castShadow = true; });
+      scene.add(lGroup);
+      accum += spacing;
     }
-  }
-
-  if (poleGeoms.length > 0) {
-    const mesh = new THREE.Mesh(mergeGeometries(poleGeoms, false), lampPoleMat);
-    mesh.castShadow = true;
-    scene.add(mesh);
-    poleGeoms.forEach(g => g.dispose());
-  }
-  if (glowGeoms.length > 0) {
-    const mesh = new THREE.Mesh(mergeGeometries(glowGeoms, false), lampGlowMat);
-    scene.add(mesh);
-    glowGeoms.forEach(g => g.dispose());
+    accum -= segLen;
   }
 }
 
