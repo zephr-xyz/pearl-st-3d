@@ -1,0 +1,1406 @@
+[
+  {
+    "building_id": "c8449a5c-6cb1-4726-ba81-0320f718492d",
+    "poi_name": "Full Cycle",
+    "material": "brick",
+    "color": "#4a3728",
+    "accent": "#4a4a4a",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": "180693237285426",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "99a7504f-b210-48bf-b7e2-8c7af62291e2",
+    "poi_name": "The Laughing Goat",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.3
+    },
+    "awning": null,
+    "details": [
+      "ornate"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": "5791147640910390",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "a1315fad-c9f4-4402-aabb-5b48074ac82f",
+    "poi_name": "Amundsen Boulder",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#ffffff",
+    "window_style": "arched",
+    "stories": 1,
+    "entrance": {
+      "count": 1,
+      "style": "arched",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "mural"
+    ],
+    "window_grid": {
+      "rows": 1,
+      "cols": 1,
+      "source": "cv"
+    },
+    "image_id": "4248547415365054",
+    "building_height": 3.174165725708008
+  },
+  {
+    "building_id": "6cf6ba7b-4258-44dc-85f7-7c6ac3d89893",
+    "poi_name": "Two Sole Sisters",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "recessed",
+      "position": 0.3
+    },
+    "awning": null,
+    "details": [
+      "cornice"
+    ],
+    "window_grid": {
+      "rows": 4,
+      "cols": 4,
+      "source": "cv"
+    },
+    "image_id": "373438950754503",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "968fdf3f-8839-4b23-9576-8d4b67a9dc2c",
+    "poi_name": "Paradise Found Records & Music",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#4a4a4a",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "mural"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "57aee387-578f-4c15-80d5-2d1cb234dfc0",
+    "poi_name": "Leaf Vegetarian Restaurant",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#ffffff",
+    "window_style": "industrial",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "glass",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "mural"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "bc52c1b9-b81b-43c5-b284-bff0cdd14419",
+    "poi_name": "Arc'teryx",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "storefront_glass",
+    "stories": 3,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 3,
+      "cols": 3,
+      "source": "cv"
+    },
+    "image_id": "1456229582502421",
+    "building_height": 10.5
+  },
+  {
+    "building_id": "f61c4184-d69c-4fc7-b873-1d42d8b69c8e",
+    "poi_name": "Independent Order of Odd Fellows",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#d4c5a9",
+    "window_style": "arched",
+    "stories": 3,
+    "entrance": {
+      "count": 1,
+      "style": "arched",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "pediment"
+    ],
+    "window_grid": {
+      "rows": 3,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": "2624712061261433",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "be1c0aaf-3b66-484e-bed1-b644789d844e",
+    "poi_name": "Organic Sandwich Company",
+    "material": "brick",
+    "color": "#6b5b4a",
+    "accent": "#ffffff",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 1,
+      "cols": 1,
+      "source": "cv"
+    },
+    "image_id": "760246844595593",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "97f698fd-fd27-452b-aca9-1f61a57b150d",
+    "poi_name": "Liberty Puzzles",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#4a4a4a",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "glass",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 2,
+      "source": "cv"
+    },
+    "image_id": "1020782702963392",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "718f4030-0622-4356-bb3c-46eb1ba73ccc",
+    "poi_name": "Gelato Boy",
+    "material": "brick",
+    "color": "#6b5b4a",
+    "accent": "#ffffff",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "columns"
+    ],
+    "window_grid": {
+      "rows": 1,
+      "cols": 1,
+      "source": "cv"
+    },
+    "image_id": "257819033382472",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "3d9ea9f8-f9b5-465b-9a7d-df43b63a12ca",
+    "poi_name": "1500 Pearl Street Garage",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#d4c5a9",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [
+      "columns"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 5,
+      "source": "cv"
+    },
+    "image_id": "826184977983923",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "954cb30c-1eb3-41e2-b7b0-f6640a4c3595",
+    "poi_name": "Barbara & Company",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#ffffff",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": "928978491580216",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "67797069-8ea7-4f97-8280-4ab9392d1bdf",
+    "poi_name": "Mountain Sun Pub & Brewery",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#d4c5a9",
+    "window_style": "tall_narrow",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [
+      "ornate"
+    ],
+    "window_grid": {
+      "rows": 1,
+      "cols": 1,
+      "source": "cv"
+    },
+    "image_id": "489255685460065",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "6bf9d300-d51d-428d-b923-519fc0f90351",
+    "poi_name": "Backcountry",
+    "material": "brick",
+    "color": "#4a3728",
+    "accent": "#d4c5a9",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "ornate"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": "762568873544951",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "e6ca7522-53d7-4842-a190-287b28b224f6",
+    "poi_name": "The Dragontree",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 1,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "ornate"
+    ],
+    "window_grid": {
+      "rows": 1,
+      "cols": 1,
+      "source": "cv"
+    },
+    "image_id": "1060907274437784",
+    "building_height": 3.5
+  },
+  {
+    "building_id": "1ae31196-5c96-47d4-9045-40c2ece9083d",
+    "poi_name": "Bolder Colours",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#ffffff",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "glass",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": "193231265949723",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "68f5bdb6-4579-41ee-913e-ceb8f7534032",
+    "poi_name": "sweetgreen",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#d4c5a9",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": "4091942594391182",
+    "building_height": 7.197900295257568
+  },
+  {
+    "building_id": "f1a95338-62db-420c-aa7d-415bd2346b72",
+    "poi_name": "Foolish Craig's Cafe",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#cc2222",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 2,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": "2062801870960258",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "dd7e2962-f6e5-4d99-923a-01c837c559e5",
+    "poi_name": "Snooze, an A.M. Eatery",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [
+      "balcony"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": "3094065900765545",
+    "building_height": 7.0
+  },
+  {
+    "building_id": "5a1dbb17-972e-4966-b564-7f89e666140d",
+    "poi_name": "Violette Boulder",
+    "material": "stone",
+    "color": "#b0a090",
+    "accent": "#cc2222",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "a9e1cc82-e147-4256-88eb-78be4aea3000",
+    "poi_name": "Bliss",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.3
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "bca09434-db8d-45ff-8036-2a6596094791",
+    "poi_name": "The Bradley Boulder Inn",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#4a4a4a",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 6.432472229003906
+  },
+  {
+    "building_id": "c75c59ef-d668-46ba-a889-5f323065326f",
+    "poi_name": "Rembrandt Yard",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#4a4a4a",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 8.659134864807129
+  },
+  {
+    "building_id": "9022e165-3bc1-48c6-a382-4cfc8d5eb9fe",
+    "poi_name": "Boulder Theater",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "2773d6b2-4c80-4cac-a21b-16293b89f6f4",
+    "poi_name": "Regus",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 3,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 3,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 9.305357933044434
+  },
+  {
+    "building_id": "f910024b-e0f8-4886-b0ed-c57b5022d29d",
+    "poi_name": "Pedestrian Shops",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "columns"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "ec06e34f-f7db-4850-becd-a37b59888fde",
+    "poi_name": "Boychik - Avanti F&B, Boulder",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 4,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 4,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 14.0
+  },
+  {
+    "building_id": "c226521d-74ff-4c1d-9108-a0a8be8080fe",
+    "poi_name": "Into The Wind",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#ffffff",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#2a2a2a"
+    },
+    "details": [
+      "mural"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "1c530ac5-1eef-4db9-bd45-60557733ce88",
+    "poi_name": "Children's Sculpture Playground",
+    "material": "brick",
+    "color": "#5a7a5a",
+    "accent": "#4a4a4a",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "ce6cf299-1796-4cb7-82a6-5d2dface3d38",
+    "poi_name": "Kilwins",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "recessed",
+      "position": 0.7
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#2a2a2a"
+    },
+    "details": [
+      "columns"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "bcb2a963-56d7-4e93-8f33-5bcb09775040",
+    "poi_name": "HIMALI",
+    "material": "brick",
+    "color": "#6b5b4a",
+    "accent": "#ffffff",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [
+      "cornice"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "78353c93-69d6-40ef-a46d-f06ac76e65fc",
+    "poi_name": "Pizza Colore",
+    "material": "brick",
+    "color": "#6b5b4a",
+    "accent": "#ffffff",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#2a5a2a"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "53a3a1e9-46f4-4e47-ab5a-81a3bd139f37",
+    "poi_name": "Alpaca Connection",
+    "material": "stucco",
+    "color": "#c8bfb0",
+    "accent": "#1a237e",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "recessed",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "e6024589-fc2f-4e09-ae90-3b6c5035c312",
+    "poi_name": "Art Mart Gifts",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "f9646459-ebac-47a4-b4cd-8064e4110570",
+    "poi_name": "Pompadours Hair Salon Aveda",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 3,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 3,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 10.5
+  },
+  {
+    "building_id": "e03be67b-3326-4847-a731-89087d0ea661",
+    "poi_name": "Bands on the Bricks",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#cc2222",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "3a43fed4-32af-4f51-bef5-0457ce641e64",
+    "poi_name": "Sforno Trattoria Romana",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "b045bba2-8f24-47c0-b811-a4855fe2dbc7",
+    "poi_name": "Rocky Mountain Chocolate Factory",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#cc2222",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#2a5a2a"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "7c926be6-519a-4868-be1f-1dd534648319",
+    "poi_name": "Wells Fargo Advisors",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#4a4a4a",
+    "window_style": "arched",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "arched",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "5dbfd8a6-4d5f-4402-9545-14b99d65918b",
+    "poi_name": "Peppercorn",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#ffffff",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#1a3a6a"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "30e21cf6-9157-4f9c-abda-25bf260814da",
+    "poi_name": "Art Source International",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#1a237e",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "092c2ae2-3496-419e-baf7-2df0f0ce5b01",
+    "poi_name": "ECHOS Communications",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#cc2222",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "recessed",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "d661159e-04f0-4494-b9fe-131d83993b40",
+    "poi_name": "Pearl Street Mall",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#d4c5a9",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "ornate"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "187961f7-c1f6-422d-8d01-9be992d5418e",
+    "poi_name": "Boulder County Government",
+    "material": "stone",
+    "color": "#d4b896",
+    "accent": "#cc2222",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 2,
+      "style": "standard",
+      "position": 0.3
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "816c76e7-521e-415e-9acd-16ce6d7e91e5",
+    "poi_name": "The Post Boulder",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#4a4a4a",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "24e847b1-2aa8-4e5e-8bcc-523b188e7a68",
+    "poi_name": "Bohemian Biergarten",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#cc2222",
+    "window_style": "traditional",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "1cb6b0bb-5b57-4515-91fc-c0a60b79a768",
+    "poi_name": "Ku Cha House of Tea",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "5c08b1ae-101e-4993-9d4e-4987971bfe13",
+    "poi_name": "Volcom Store Boulder",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#4a4a4a",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "0f406893-e717-47d7-bb52-970bd49acfcf",
+    "poi_name": "The Little Jewel",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [
+      "cornice",
+      "ornate"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "ece9b307-e803-4b21-ad27-d5f2c8ca32d9",
+    "poi_name": "Savannah Bee Company",
+    "material": "brick",
+    "color": "#6b5b4a",
+    "accent": "#d4c5a9",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "recessed",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "917eb9cb-ead3-412a-b9f1-cbda8c48ebe4",
+    "poi_name": "Free People",
+    "material": "brick",
+    "color": "#6b5b4a",
+    "accent": "#d4c5a9",
+    "window_style": "storefront_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.3
+    },
+    "awning": null,
+    "details": [
+      "columns",
+      "ornate"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "5758580b-3292-4957-a4bd-984cde5a758d",
+    "poi_name": "Historic Boulder",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#d4c5a9",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": null,
+    "details": [
+      "ornate"
+    ],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "c9073cdc-0448-458e-9964-a2e6a344ecf8",
+    "poi_name": "Weekends",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#ffffff",
+    "window_style": "large_plate_glass",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "dcd74ab9-0403-4a19-8bfe-eadfa5e5a248",
+    "poi_name": "Hotel Boulderado",
+    "material": "brick",
+    "color": "#8B5C3A",
+    "accent": "#ffffff",
+    "window_style": "bay",
+    "stories": 3,
+    "entrance": {
+      "count": 1,
+      "style": "recessed",
+      "position": 0.5
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 3,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 12.062129974365234
+  },
+  {
+    "building_id": "b6ed0fe3-7216-47a7-b7b2-3b36dbc1dc69",
+    "poi_name": "Steakhouse No. 316",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "tall_narrow",
+    "stories": 2,
+    "entrance": {
+      "count": 1,
+      "style": "standard",
+      "position": 0.7
+    },
+    "awning": null,
+    "details": [],
+    "window_grid": {
+      "rows": 2,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  },
+  {
+    "building_id": "cec84976-a901-4be0-a81b-24d101574506",
+    "poi_name": "Citywide Banks, a division of UMB Bank, n.a.",
+    "material": "brick",
+    "color": "#8B4513",
+    "accent": "#cc2222",
+    "window_style": "traditional",
+    "stories": 1,
+    "entrance": {
+      "count": 1,
+      "style": "arched",
+      "position": 0.3
+    },
+    "awning": {
+      "style": "flat",
+      "color": "#cc2222"
+    },
+    "details": [],
+    "window_grid": {
+      "rows": 1,
+      "cols": 3,
+      "source": "estimated"
+    },
+    "image_id": null,
+    "building_height": 7.0
+  }
+]
