@@ -1425,7 +1425,7 @@ for (const feat of (data.ground_features || [])) {
 
 // Roads — rendered as flat quads
 // Mapbox Streets — white roads, warm-toned pedestrian areas
-const roadColors = { tertiary: 0x404040, residential: 0x484848, primary: 0x383838, footway: 0xc4b4a0, pedestrian: 0xc4b4a0, service: 0x505050 };
+const roadColors = { tertiary: 0x404040, residential: 0x484848, primary: 0x383838, footway: 0x8b3a2a, pedestrian: 0x8b3a2a, service: 0x505050 };
 for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'footway' || road.class === 'pedestrian' ? 1.5 : 2.5) / 2;
@@ -1550,47 +1550,6 @@ for (const road of (data.roads || [])) {
   }
 }
 
-// Crosswalks — white striped markings painted on road surface
-const crosswalkMat = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.75, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
-for (const cw of (data.crosswalks || [])) {
-  if (cw.points.length < 2) continue;
-  for (let i = 0; i < cw.points.length - 1; i++) {
-    const [x0, z0] = cw.points[i];
-    const [x1, z1] = cw.points[i + 1];
-    const dx = x1 - x0, dz = z1 - z0;
-    const segLen = Math.sqrt(dx * dx + dz * dz);
-    if (segLen < 1.5) continue;
-    const ux = dx / segLen, uz = dz / segLen;
-    const nx = -uz, nz = ux;
-    const stripeW = 0.4, stripeGap = 0.5, stripeLen = 2.2;
-    const numStripes = Math.floor(segLen / (stripeW + stripeGap));
-    if (numStripes < 2) continue;
-    const cwVerts = [];
-    for (let s = 0; s < numStripes; s++) {
-      const t = (s + 0.5) * (stripeW + stripeGap);
-      const cx = x0 + ux * t, cz = z0 + uz * t;
-      const hlf = stripeLen / 2;
-      const hw = stripeW / 2;
-      const ey = getTerrainElevation(cx, cz) + 0.025;
-      cwVerts.push(
-        cx + ux * hw - nx * hlf, ey, cz + uz * hw - nz * hlf,
-        cx + ux * hw + nx * hlf, ey, cz + uz * hw + nz * hlf,
-        cx - ux * hw + nx * hlf, ey, cz - uz * hw + nz * hlf,
-        cx + ux * hw - nx * hlf, ey, cz + uz * hw - nz * hlf,
-        cx - ux * hw + nx * hlf, ey, cz - uz * hw + nz * hlf,
-        cx - ux * hw - nx * hlf, ey, cz - uz * hw - nz * hlf
-      );
-    }
-    if (cwVerts.length > 0) {
-      const cwGeom = new THREE.BufferGeometry();
-      cwGeom.setAttribute('position', new THREE.Float32BufferAttribute(cwVerts, 3));
-      cwGeom.computeVertexNormals();
-      const cwMesh = new THREE.Mesh(cwGeom, crosswalkMat);
-      cwMesh.receiveShadow = true;
-      scene.add(cwMesh);
-    }
-  }
-}
 
 // Trees — varied deciduous with multi-cluster canopy
 const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 });
