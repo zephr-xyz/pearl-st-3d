@@ -880,25 +880,25 @@ const signsData = await signsResp.json();
   const SIGN_W = 2.4;
   const SIGN_H = 0.6;
 
-  let signCount = 0;
+  // Group signs by building, limit to 2 per building
+  const signsByBld = {};
   for (const sign of signsData) {
     if (!sign.name) continue;
-    const bld = bldMap[sign.building_id];
+    if (!signsByBld[sign.building_id]) signsByBld[sign.building_id] = [];
+    if (signsByBld[sign.building_id].length < 2) signsByBld[sign.building_id].push(sign);
+  }
+
+  let signCount = 0;
+  for (const [bldId, bldSigns] of Object.entries(signsByBld)) {
+    const bld = bldMap[bldId];
     if (!bld || !bld.walls || bld.walls.length === 0) continue;
 
-    const sx = (sign.lon - data.ref_lon) * mPerDegLon;
-    const sz = (sign.lat - data.ref_lat) * mPerDegLat;
-
-    // Find closest wall on THIS building only
-    let bestWall = null, bestDist = Infinity;
+    // Place signs on the longest wall (primary street-facing facade)
+    let bestWall = null;
     for (const wall of bld.walls) {
-      const v = wall.vertices;
-      const wx = (v[0][0] + v[1][0]) / 2;
-      const wz = (v[0][2] + v[1][2]) / 2;
-      const d = (sx - wx) ** 2 + (sz - wz) ** 2;
-      if (d < bestDist) { bestDist = d; bestWall = wall; }
+      if (!bestWall || wall.length > bestWall.length) bestWall = wall;
     }
-    if (!bestWall) continue;
+    if (!bestWall || bestWall.length < 3) continue;
 
     const v = bestWall.vertices;
     const x0 = v[0][0], z0 = v[0][2], x1 = v[1][0], z1 = v[1][2];
@@ -907,14 +907,17 @@ const signsData = await signsResp.json();
     const len = Math.sqrt(dx * dx + dz * dz);
     if (len < 2) continue;
 
-    // Clamp sign width to wall length with padding
-    const signW = Math.min(SIGN_W, len - 0.5);
+    // Distribute signs evenly along the wall
+    const numSigns = bldSigns.length;
+    for (let si = 0; si < numSigns; si++) {
+    const sign = bldSigns[si];
+
+    const signW = Math.min(SIGN_W, (len / numSigns) - 0.5);
     if (signW < 0.5) continue;
 
-    // Project sign position onto wall, clamp so sign stays within wall bounds
-    let t = ((sx - x0) * dx + (sz - z0) * dz) / (dx * dx + dz * dz);
+    // Evenly spaced t positions
+    const t = (si + 0.5) / numSigns;
     const halfW_t = (signW / 2) / len;
-    t = Math.max(halfW_t + 0.02, Math.min(1 - halfW_t - 0.02, t));
 
     // Sign Y position: top of ground floor, aligned with signage band/awnings
     const stories = bld.style?.stories || Math.max(1, Math.round(h / 3.5));
@@ -964,7 +967,8 @@ const signsData = await signsResp.json();
     mesh.renderOrder = 1;
     scene.add(mesh);
     signCount++;
-  }
+    } // end inner for (si)
+  } // end for-of (bldSigns)
   console.log(`Signs rendered: ${signCount}`);
 }
 
