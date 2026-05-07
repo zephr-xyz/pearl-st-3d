@@ -836,20 +836,56 @@ function rebuildScene(mode) {
 
 rebuildScene('textured');
 
-// Signs — SNIP-detected signage crops placed on building facades
+// Signs — procedurally rendered from SNIP-detected text
 fetch('signs.json').then(r => r.json()).then(signsData => {
   const mPerDegLat = 111320;
   const mPerDegLon = 111320 * Math.cos(data.ref_lat * Math.PI / 180);
 
-  // Index building walls by building id for sign placement
   const bldMap = {};
   for (const bld of data.buildings) bldMap[bld.id] = bld;
+
+  // Procedural sign texture generator
+  function createSignTexture(name) {
+    const cvs = document.createElement('canvas');
+    const W = 512, H = 128;
+    cvs.width = W; cvs.height = H;
+    const ctx = cvs.getContext('2d');
+
+    // Sign background — dark with subtle border
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath();
+    ctx.roundRect(4, 4, W - 8, H - 8, 6);
+    ctx.fill();
+
+    // Thin border
+    ctx.strokeStyle = '#d4c5a9';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(8, 8, W - 16, H - 16, 4);
+    ctx.stroke();
+
+    // Text
+    ctx.fillStyle = '#f5f0e0';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Auto-size font to fit
+    let fontSize = 42;
+    ctx.font = `600 ${fontSize}px -apple-system, sans-serif`;
+    while (ctx.measureText(name).width > W - 40 && fontSize > 14) {
+      fontSize -= 2;
+      ctx.font = `600 ${fontSize}px -apple-system, sans-serif`;
+    }
+    ctx.fillText(name, W / 2, H / 2);
+
+    const tex = new THREE.CanvasTexture(cvs);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
 
   for (const sign of signsData) {
     const bld = bldMap[sign.building_id];
     if (!bld) continue;
 
-    // Convert sign lat/lon to scene meters
     const sx = (sign.lon - data.ref_lon) * mPerDegLon;
     const sz = (sign.lat - data.ref_lat) * mPerDegLat;
 
@@ -870,26 +906,21 @@ fetch('signs.json').then(r => r.json()).then(signsData => {
     const h = bestWall.height;
     const dx = x1 - x0, dz = z1 - z0;
     const len = Math.sqrt(dx * dx + dz * dz);
-    if (len < 1) continue;
+    if (len < 2) continue;
 
-    // Position sign at t along wall (project sign point onto wall edge)
     let t = ((sx - x0) * dx + (sz - z0) * dz) / (dx * dx + dz * dz);
-    t = Math.max(0.1, Math.min(0.9, t));
+    t = Math.max(0.15, Math.min(0.85, t));
 
-    // Sign dimensions (in meters)
     const signW = Math.min(len * 0.4, 3.0);
-    const signH = signW * 0.4;
+    const signH = signW * 0.25;
     const signY = h * 0.72;
 
-    // Wall normal (outward)
+    // Wall outward normal
     const nx = -dz / len, nz = dx / len;
-    const offset = 0.08;
+    const offset = 0.12;
 
-    // Sign center position
     const cx = x0 + t * dx + nx * offset;
     const cz = z0 + t * dz + nz * offset;
-
-    // Create sign quad aligned to wall
     const right_x = dx / len, right_z = dz / len;
     const hw = signW / 2, hh = signH / 2;
 
@@ -908,21 +939,19 @@ fetch('signs.json').then(r => r.json()).then(signsData => {
     geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geom.computeVertexNormals();
 
-    const tex = textureLoader.load(sign.image_path);
-    tex.colorSpace = THREE.SRGBColorSpace;
+    const tex = createSignTexture(sign.name);
     const mat = new THREE.MeshStandardMaterial({
-      map: tex, roughness: 0.5, metalness: 0,
+      map: tex, roughness: 0.4, metalness: 0.1,
       side: THREE.DoubleSide,
-      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+      polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
     });
 
     const mesh = new THREE.Mesh(geom, mat);
-    // Offset to terrain height like the building
     const terrainY = getTerrainElevation(bld.centroid_m[0], bld.centroid_m[1]);
     mesh.position.y = terrainY;
     scene.add(mesh);
   }
-}).catch(() => {});
+}).catch(e => console.warn('Signs failed:', e));
 
 // Ground features — Overture land_use/land_cover polygons
 // Mapbox Streets v12 land use palette
