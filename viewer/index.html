@@ -1430,7 +1430,7 @@ for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'pedestrian' ? 6 : road.class === 'footway' ? 2 : 2.5) / 2;
   const color = roadColors[road.class] || 0x888888;
-  const y = road.class === 'footway' || road.class === 'pedestrian' ? 0.06 : 0.05;
+  const y = road.class === 'footway' || road.class === 'pedestrian' ? 0.15 : 0.12;
 
   const verts = [];
   for (let i = 0; i < road.points.length - 1; i++) {
@@ -1452,7 +1452,7 @@ for (const road of (data.roads || [])) {
   const rGeom = new THREE.BufferGeometry();
   rGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
   rGeom.computeVertexNormals();
-  const rMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+  const rMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 });
   const rMesh = new THREE.Mesh(rGeom, rMat);
   rMesh.receiveShadow = true;
   scene.add(rMesh);
@@ -1653,11 +1653,12 @@ terrainGeom.computeVertexNormals();
 
 const terrainMat = new THREE.MeshStandardMaterial({
   color: 0x8a8580, roughness: 0.95, metalness: 0,
-  side: THREE.DoubleSide
+  side: THREE.DoubleSide,
+  polygonOffset: true, polygonOffsetFactor: 10, polygonOffsetUnits: 10
 });
 const terrainMesh = new THREE.Mesh(terrainGeom, terrainMat);
 terrainMesh.rotation.x = -Math.PI / 2;
-
+terrainMesh.renderOrder = -1;
 terrainMesh.position.set(terrainCenterX, -0.1, terrainCenterZ);
 terrainMesh.receiveShadow = true;
 scene.add(terrainMesh);
