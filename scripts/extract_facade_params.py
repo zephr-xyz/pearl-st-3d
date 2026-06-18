@@ -177,22 +177,28 @@ def extract_entrance_info(desc):
 
 
 def extract_accent_color(desc):
-    """Extract accent/trim color from description."""
+    """Extract accent/trim color from description.
+    Returns None when no trim color is explicitly described — callers should
+    then fall back to the facade color rather than inventing white bands."""
     desc_lower = desc.lower()
     patterns = {
-        "#ffffff": [r"white.*trim", r"white.*frame", r"white.*cornice"],
-        "#1a237e": [r"blue.*trim", r"navy.*frame", r"blue.*awning"],
-        "#2a5a2a": [r"green.*awning", r"green.*trim"],
-        "#cc2222": [r"red.*awning", r"red.*trim", r"red.*door"],
-        "#ccaa00": [r"gold.*trim", r"gold.*accent", r"brass"],
-        "#4a4a4a": [r"black.*metal", r"dark.*metal", r"iron"],
-        "#808080": [r"gray.*trim", r"grey.*frame", r"silver"],
+        "#ffffff": [r"white.*(?:trim|frame|cornice|scrollwork|frieze|relief)",
+                    r"(?:trim|frame|cornice|scrollwork|frieze|relief).*white"],
+        "#ccaa00": [r"gold.*(?:trim|accent|detail)", r"brass", r"gilded"],
+        "#1a237e": [r"(?:blue|navy).*(?:trim|frame|beam|steel)",
+                    r"(?:trim|frame|beam|steel).*(?:blue|navy)"],
+        "#4a4a4a": [r"(?:black|dark).*(?:metal|steel|iron).*(?:trim|frame|beam)",
+                    r"(?:trim|frame|beam).*(?:black|dark).*(?:metal|steel|iron)"],
+        "#808080": [r"(?:gray|grey).*(?:trim|frame|concrete)",
+                    r"(?:trim|frame|concrete).*(?:gray|grey)", r"silver.*(?:trim|frame)"],
+        "#cc2222": [r"red.*trim", r"red.*frame"],
+        "#2a6a2a": [r"green.*trim", r"green.*frame"],
     }
     for hex_color, pats in patterns.items():
         for pat in pats:
             if re.search(pat, desc_lower):
                 return hex_color
-    return "#d4c5a9"
+    return None  # no explicit trim color — viewer falls back to facade color
 
 
 _AWNING_COLORS = [

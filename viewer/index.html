@@ -304,6 +304,10 @@ function createProceduralFacade(style, wall) {
   const stories = style.stories || 2;
   const floorH = H / stories;
 
+  // trim: only use accent when it was explicitly described (not null/undefined).
+  // Fallback to facade color so frames and bands don't invent white stripes.
+  const trim = style.accent || style.color || '#d4c5a9';
+
   // Compute exclusion zones around entrances (used throughout)
   const pxPerMeter = W / width;
   const doorW = 0.9 * pxPerMeter;
@@ -375,14 +379,14 @@ function createProceduralFacade(style, wall) {
 
   // === CORNICE ===
   const corniceH = Math.max(8, H * 0.035);
-  ctx.fillStyle = style.accent || '#d4c5a9';
+  ctx.fillStyle = trim;
   ctx.fillRect(0, 0, W, corniceH);
   ctx.fillStyle = 'rgba(0,0,0,0.2)';
   ctx.fillRect(0, corniceH, W, 2);
 
   // Pediment (Odd Fellows)
   if (style.pediment) {
-    ctx.fillStyle = style.accent || '#f5f0e0';
+    ctx.fillStyle = trim;
     ctx.beginPath();
     ctx.moveTo(W * 0.3, corniceH);
     ctx.lineTo(W * 0.5, corniceH - H * 0.04);
@@ -392,10 +396,19 @@ function createProceduralFacade(style, wall) {
   }
 
   // === FLOOR DIVIDERS ===
+  // Subtle shadow line — never a colored band unless accent explicitly set
   for (let f = 1; f < stories; f++) {
     const ly = f * floorH;
-    ctx.fillStyle = style.accent || '#d4c5a9';
-    ctx.fillRect(0, ly - 1, W, 3);
+    if (style.accent) {
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = trim;
+      ctx.fillRect(0, ly - 1, W, 2);
+      ctx.globalAlpha = 1.0;
+    }
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.fillRect(0, ly + 1, W, 1.5);
+    ctx.globalAlpha = 1.0;
   }
 
   // === SIGNAGE BAND (between cornice and first window row, or above ground floor) ===
@@ -431,22 +444,22 @@ function createProceduralFacade(style, wall) {
 
         // Arched top for romanesque
         if (style.windows === 'romanesque_arched') {
-          ctx.fillStyle = style.accent || '#f5f0e0';
+          ctx.fillStyle = trim;
           ctx.beginPath();
           ctx.arc(winCx, winTop, winW/2 + 3, Math.PI, 0);
           ctx.fill();
         }
 
         // Sill
-        ctx.fillStyle = style.accent || '#e0d8c8';
+        ctx.fillStyle = trim;
         ctx.fillRect(winCx - winW/2 - 3, winTop + winH, winW + 6, 4);
 
         // Lintel
-        ctx.fillStyle = style.accent || '#e0d8c8';
+        ctx.fillStyle = trim;
         ctx.fillRect(winCx - winW/2 - 2, winTop - 4, winW + 4, 4);
 
         // Frame
-        ctx.fillStyle = style.accent || '#f5f0e0';
+        ctx.fillStyle = trim;
         ctx.fillRect(winCx - winW/2 - 1.5, winTop, winW + 3, winH);
 
         // Glass — gradient with sky reflection
@@ -469,7 +482,7 @@ function createProceduralFacade(style, wall) {
         ctx.globalAlpha = 1.0;
 
         // Mullion (vertical divider)
-        ctx.fillStyle = style.accent || '#d0c8b8';
+        ctx.fillStyle = trim;
         ctx.fillRect(winCx - 0.8, winTop + 1, 1.6, winH - 2);
 
         // Horizontal mullion for multi-pane
@@ -583,14 +596,14 @@ function createProceduralFacade(style, wall) {
       const cx = (wi + 0.75) * spacing;
       if (inEntranceZone(cx)) continue;
 
-      ctx.fillStyle = style.accent || '#e0d8c8';
+      ctx.fillStyle = trim;
       ctx.fillRect(cx - gWinW/2 - 2, gWinTop - 2, gWinW + 4, gWinH + 4);
       const wg = ctx.createLinearGradient(cx, gWinTop, cx, gWinTop + gWinH);
       wg.addColorStop(0, '#2a4565');
       wg.addColorStop(1, '#1f3550');
       ctx.fillStyle = wg;
       ctx.fillRect(cx - gWinW/2, gWinTop, gWinW, gWinH);
-      ctx.fillStyle = style.accent || '#e0d8c8';
+      ctx.fillStyle = trim;
       ctx.fillRect(cx - 0.8, gWinTop, 1.6, gWinH);
     }
   }
