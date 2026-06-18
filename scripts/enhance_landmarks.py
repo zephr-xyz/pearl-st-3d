@@ -65,6 +65,7 @@ _STYLE_QID = {
     "Q131285":  "tudor_revival",
     "Q5322082": "craftsman",
     "Q179872":  "italianate",
+    "Q1268134": "richardsonian_romanesque",
     "Q3947":    "house",  # avoid mapping residences to arch styles
 }
 
@@ -110,7 +111,6 @@ def load_osm_buildings(bbox, cache_path: str, force_refresh: bool = False) -> li
         with open(cache_path) as f:
             return json.load(f)
 
-    import subprocess
     s, w, n, e = bbox
     query = (
         f'[out:json][timeout:30];'
@@ -118,12 +118,14 @@ def load_osm_buildings(bbox, cache_path: str, force_refresh: bool = False) -> li
         f'relation["building"]({s},{w},{n},{e}););'
         f'out center tags;'
     )
-    cmd = [
-        "curl", "-s", "https://overpass-api.de/api/interpreter",
-        "--data-urlencode", f"data={query}",
-    ]
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
-    elements = json.loads(proc.stdout).get("elements", [])
+    data = urllib.parse.urlencode({"data": query}).encode()
+    req = urllib.request.Request(
+        "https://overpass-api.de/api/interpreter",
+        data=data,
+        headers={"User-Agent": WDQS_UA, "Content-Type": "application/x-www-form-urlencoded"},
+    )
+    resp = urllib.request.urlopen(req, timeout=45)
+    elements = json.loads(resp.read()).get("elements", [])
 
     buildings = []
     for el in elements:
@@ -300,18 +302,25 @@ def _fetch_wikidata_candidates(bld_latlons: dict, cache_dir: str) -> dict:
 
     lats = [ll[0] for ll in bld_latlons.values()]
     lons = [ll[1] for ll in bld_latlons.values()]
-    s, n = min(lats) - 0.003, max(lats) + 0.003
-    w, e = min(lons) - 0.003, max(lons) + 0.003
+    center_lat = sum(lats) / len(lats)
+    center_lon = sum(lons) / len(lons)
+    # radius_km: half the diagonal of the bbox, capped at 1km
+    import math as _math
+    dlat = (max(lats) - min(lats)) * 111.32
+    dlon = (max(lons) - min(lons)) * 111.32 * _math.cos(_math.radians(center_lat))
+    radius_km = min(1.0, _math.sqrt(dlat**2 + dlon**2) / 2 + 0.3)
 
+    # wikibase:around is WDQS-optimised for geo lookup (no property-path cost)
     sparql = f"""
 SELECT DISTINCT ?item ?itemLabel ?coord WHERE {{
-  ?item wdt:P625 ?coord ;
-        wdt:P31/wdt:P279* wd:Q41176 .
-  FILTER(geof:latitude(?coord) > {s} && geof:latitude(?coord) < {n}
-      && geof:longitude(?coord) > {w} && geof:longitude(?coord) < {e})
+  SERVICE wikibase:around {{
+    ?item wdt:P625 ?coord .
+    bd:serviceParam wikibase:center "Point({center_lon:.5f} {center_lat:.5f})"^^geo:wktLiteral .
+    bd:serviceParam wikibase:radius "{radius_km:.2f}" .
+  }}
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en" . }}
 }}
-LIMIT 300
+LIMIT 200
 """
     params = urllib.parse.urlencode({"query": sparql, "format": "json"})
     req = urllib.request.Request(
@@ -320,7 +329,7 @@ LIMIT 300
     )
     candidates = {}
     try:
-        resp = urllib.request.urlopen(req, timeout=30)
+        resp = urllib.request.urlopen(req, timeout=60)
         for row in json.loads(resp.read()).get("results", {}).get("bindings", []):
             qid = row["item"]["value"].split("/")[-1]
             label = row.get("itemLabel", {}).get("value", "")
@@ -732,7 +741,7 @@ def main():
 
         bld["style"] = style
         all_decisions[bid] = {
-            "name":       bld.get("pois", [bid[:12]])[0],
+            "name":       (bld.get("pois") or [bid[:12]])[0],
             "height":     bld["height"],
             "base_height": bld.get("base_height"),
             "height_src": bld.get("_h_src", "default"),
