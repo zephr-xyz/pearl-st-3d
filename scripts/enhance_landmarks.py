@@ -196,7 +196,8 @@ MANUAL_OVERRIDES = {
     "Boulder County Government": {"height": 20.0, "stories": 4},
     "Boulder Theater":           {"height": 14.0, "stories": 3},
     "Hotel Boulderado":          {"height": 18.0, "stories": 5,
-                                  "awning": {"color": "#2d6a2d", "style": "flat"}},
+                                  "awning": {"color": "#2d6a2d", "style": "flat"},
+                                  "accent": "#4a2e14"},  # dark wood eaves; VD says white-framed but real building has brown trim
     "Wells Fargo Advisors":      {"height": 12.0, "stories": 3},
     "Independent Order of Odd Fellows": {"height": 14.0, "stories": 3},
     "Free People":               {"height": 12.0, "stories": 3},
@@ -287,6 +288,8 @@ def main():
                 style["stories"] = override["stories"]
                 if "awning" in override:
                     style["awning"] = override["awning"]
+                if "accent" in override:
+                    style["accent"] = override["accent"]
                 height_corrected += 1
 
         # 2b. VD-based awning color correction (runs after manual overrides but
