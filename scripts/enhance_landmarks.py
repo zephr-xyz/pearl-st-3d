@@ -12,6 +12,7 @@ drive enhanced procedural rendering in the viewer.
 """
 import json
 import math
+import re
 import urllib.request
 import urllib.parse
 
@@ -122,7 +123,6 @@ def extract_landmark_features(desc):
         features["symmetrical"] = True
 
     # Height estimates from description
-    import re
     story_match = re.search(r"(\d+)[- ]stor(?:y|ey|ied)", dl)
     if story_match:
         features["stories_from_desc"] = int(story_match.group(1))
@@ -134,14 +134,72 @@ def extract_landmark_features(desc):
     return features
 
 
-# Known heights for iconic buildings where OSM is missing data
+# Ordered list: most-specific multi-word phrases first, then single words.
+# Proximity match: color within 60 chars of awning/canopy in either direction.
+_AWNING_COLORS = [
+    ("yellow",     "#ccaa00"),
+    ("gold",       "#ccaa00"),
+    ("dark brown", "#3a1a0a"),
+    ("dark metal", "#333333"),
+    ("dark grey",  "#333333"),
+    ("dark gray",  "#333333"),
+    ("dark blue",  "#1a237e"),
+    ("brown",      "#5c3a1a"),
+    ("grey",       "#555555"),
+    ("gray",       "#555555"),
+    ("teal",       "#1a7a6a"),
+    ("sage",       "#5a7a5a"),
+    ("purple",     "#6a2a7a"),
+    ("maroon",     "#6b1a1a"),
+    ("burgundy",   "#6b1a1a"),
+    ("navy",       "#1a237e"),
+    ("blue",       "#1a3a6a"),
+    ("green",      "#2a6a2a"),
+    ("red",        "#cc2222"),
+    ("black",      "#2a2a2a"),
+    ("white",      "#e0e0e0"),
+    ("cream",      "#d4c8a0"),
+    ("orange",     "#cc6622"),
+    ("dark",       "#333333"),
+]
+
+
+def _extract_awning_from_desc(desc):
+    """Return awning dict from a visual description, or None if no awning mentioned."""
+    dl = desc.lower()
+    if "awning" not in dl and "canopy" not in dl:
+        return None
+    style = "flat"
+    _p = 50
+    stripe_prox = (rf"(?:stripe|striped)[^.]{{0,{_p}}}(?:awning|canopy)"
+                   rf"|(?:awning|canopy)[^.]{{0,{_p}}}(?:stripe|striped)")
+    if re.search(stripe_prox, dl):
+        style = "striped"
+    elif re.search(r"\bslop|angled|slanted", dl):
+        style = "slope"
+    color = "#3a3a3a"
+    for word, hex_color in _AWNING_COLORS:
+        # [^.] blocks cross-sentence false positives (e.g. "maroon trim. Black awnings")
+        pat = (rf"(?:{re.escape(word)}[^.]{{0,50}}(?:awning|canopy)"
+               rf"|(?:awning|canopy)[^.]{{0,50}}{re.escape(word)})")
+        if re.search(pat, dl):
+            color = hex_color
+            break
+    result = {"style": style, "color": color}
+    if style == "striped":
+        result["stripe_color"] = "rgba(255,255,255,0.45)"
+    return result
+
+
+# Known heights/styles for iconic buildings where OSM is missing data
 MANUAL_OVERRIDES = {
     "Boulder County Government": {"height": 20.0, "stories": 4},
-    "Boulder Theater": {"height": 14.0, "stories": 3},
-    "Hotel Boulderado": {"height": 18.0, "stories": 5},
-    "Wells Fargo Advisors": {"height": 12.0, "stories": 3},
+    "Boulder Theater":           {"height": 14.0, "stories": 3},
+    "Hotel Boulderado":          {"height": 18.0, "stories": 5,
+                                  "awning": {"color": "#2d6a2d", "style": "flat"}},
+    "Wells Fargo Advisors":      {"height": 12.0, "stories": 3},
     "Independent Order of Odd Fellows": {"height": 14.0, "stories": 3},
-    "Free People": {"height": 12.0, "stories": 3},
+    "Free People":               {"height": 12.0, "stories": 3},
 }
 
 
@@ -227,7 +285,19 @@ def main():
                 override = MANUAL_OVERRIDES[poi_name]
                 bld["height"] = override["height"]
                 style["stories"] = override["stories"]
+                if "awning" in override:
+                    style["awning"] = override["awning"]
                 height_corrected += 1
+
+        # 2b. VD-based awning color correction (runs after manual overrides but
+        #     only updates buildings not already pinned by MANUAL_OVERRIDES)
+        if not any(poi in MANUAL_OVERRIDES and "awning" in MANUAL_OVERRIDES[poi]
+                   for poi in pois):
+            desc_vd = desc_by_bld.get(bid, "")
+            if desc_vd:
+                vd_awning = _extract_awning_from_desc(desc_vd)
+                if vd_awning:
+                    style["awning"] = vd_awning
 
         # 3. VLM landmark features
         desc = desc_by_bld.get(bid, "")

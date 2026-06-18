@@ -195,24 +195,61 @@ def extract_accent_color(desc):
     return "#d4c5a9"
 
 
+_AWNING_COLORS = [
+    ("yellow",     "#ccaa00"),
+    ("gold",       "#ccaa00"),
+    ("dark brown", "#3a1a0a"),
+    ("dark metal", "#333333"),
+    ("dark grey",  "#333333"),
+    ("dark gray",  "#333333"),
+    ("dark blue",  "#1a237e"),
+    ("brown",      "#5c3a1a"),
+    ("grey",       "#555555"),
+    ("gray",       "#555555"),
+    ("teal",       "#1a7a6a"),
+    ("sage",       "#5a7a5a"),
+    ("purple",     "#6a2a7a"),
+    ("maroon",     "#6b1a1a"),
+    ("burgundy",   "#6b1a1a"),
+    ("navy",       "#1a237e"),
+    ("blue",       "#1a3a6a"),
+    ("green",      "#2a6a2a"),
+    ("red",        "#cc2222"),
+    ("black",      "#2a2a2a"),
+    ("white",      "#e0e0e0"),
+    ("cream",      "#d4c8a0"),
+    ("orange",     "#cc6622"),
+    ("dark",       "#333333"),
+]
+_AWNING_PROX = 50  # max chars between color word and awning/canopy
+
+
 def extract_awning(desc):
     """Extract awning info from description."""
-    desc_lower = desc.lower()
-    if "awning" not in desc_lower and "canopy" not in desc_lower:
+    dl = desc.lower()
+    if "awning" not in dl and "canopy" not in dl:
         return None
 
-    awning = {"style": "flat", "color": "#2a5a2a"}
+    awning = {"style": "flat", "color": "#3a3a3a"}
 
-    # Color
-    awning_colors = {
-        "red": "#cc2222", "green": "#2a5a2a", "blue": "#1a3a6a",
-        "black": "#2a2a2a", "white": "#e0e0e0", "striped": "#cc2222",
-        "navy": "#1a237e", "burgundy": "#6b1a1a",
-    }
-    for word, color in awning_colors.items():
-        if re.search(rf"{word}.*(?:awning|canopy)", desc_lower):
+    # Stripe style: only when "striped" appears near awning/canopy (not elsewhere on facade)
+    stripe_pat = (rf"(?:stripe|striped)[^.]{{0,{_AWNING_PROX}}}(?:awning|canopy)"
+                  rf"|(?:awning|canopy)[^.]{{0,{_AWNING_PROX}}}(?:stripe|striped)")
+    if re.search(stripe_pat, dl):
+        awning["style"] = "striped"
+    elif re.search(r"\bslop|angled|slanted", dl):
+        awning["style"] = "slope"
+
+    # Color — [^.] blocks cross-sentence matches; most-specific phrases first
+    for word, color in _AWNING_COLORS:
+        pat = (rf"(?:{re.escape(word)}[^.]{{0,{_AWNING_PROX}}}(?:awning|canopy)"
+               rf"|(?:awning|canopy)[^.]{{0,{_AWNING_PROX}}}{re.escape(word)})")
+        if re.search(pat, dl):
             awning["color"] = color
             break
+
+    if awning["style"] == "striped":
+        awning["stripe_color"] = "rgba(255,255,255,0.45)"
 
     return awning
 

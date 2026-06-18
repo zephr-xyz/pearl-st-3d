@@ -597,6 +597,29 @@ function createProceduralFacade(style, wall) {
 
   // === AWNING ===
   const awning = style.awning;
+
+  function drawScallopedValance(ctx, x0, x1, y, color) {
+    const span = x1 - x0;
+    const nSc = Math.max(3, Math.round(span / 14));
+    const scW = span / nSc;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let s = 0; s < nSc; s++) {
+      const scx = x0 + (s + 0.5) * scW;
+      ctx.arc(scx, y, scW / 2 * 0.88, 0, Math.PI);
+    }
+    ctx.fill();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    for (let s = 0; s < nSc; s++) {
+      const scx = x0 + (s + 0.5) * scW;
+      ctx.arc(scx, y + 1.5, scW / 2 * 0.88, 0, Math.PI);
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+  }
+
   if (awning && entrances.length > 0) {
     const awningH = gfH * 0.18;
     const awningTop = doorTop - awningH - 4;
@@ -605,39 +628,62 @@ function createProceduralFacade(style, wall) {
     for (const ent of entrances) {
       const cx = ent.t * W;
       const aw = Math.min(exclusionRadius * 1.6, W * 0.45);
+      const ax0 = cx - aw / 2, ax1 = cx + aw / 2;
 
       if (awningStyle === 'slope') {
-        // Sloped awning (like OZO's red one)
         ctx.fillStyle = awning.color;
         ctx.beginPath();
-        ctx.moveTo(cx - aw/2, awningTop);
-        ctx.lineTo(cx + aw/2, awningTop);
-        ctx.lineTo(cx + aw/2 - 4, awningTop + awningH);
-        ctx.lineTo(cx - aw/2 + 4, awningTop + awningH);
+        ctx.moveTo(ax0, awningTop);
+        ctx.lineTo(ax1, awningTop);
+        ctx.lineTo(ax1 - 4, awningTop + awningH);
+        ctx.lineTo(ax0 + 4, awningTop + awningH);
         ctx.closePath();
         ctx.fill();
-        // Shadow below
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.fillRect(cx - aw/2 + 4, awningTop + awningH, aw - 8, 3);
-        // Highlight on top edge
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.fillRect(cx - aw/2, awningTop, aw, 2);
+        ctx.fillRect(ax0, awningTop, aw, 2);
+        drawScallopedValance(ctx, ax0 + 4, ax1 - 4, awningTop + awningH, awning.color);
+      } else if (awningStyle === 'striped') {
+        ctx.fillStyle = awning.color;
+        ctx.fillRect(ax0, awningTop, aw, awningH);
+        const stripeColor = awning.stripe_color || 'rgba(255,255,255,0.45)';
+        const strW = Math.max(5, aw / 10);
+        ctx.fillStyle = stripeColor;
+        for (let sx = ax0; sx < ax1; sx += strW * 2) {
+          ctx.fillRect(sx, awningTop, strW, awningH);
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(ax0, awningTop, aw, 2);
+        drawScallopedValance(ctx, ax0, ax1, awningTop + awningH, awning.color);
       } else {
         // Flat awning
         ctx.fillStyle = awning.color;
-        ctx.fillRect(cx - aw/2, awningTop, aw, awningH);
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fillRect(cx - aw/2, awningTop + awningH - 2, aw, 3);
+        ctx.fillRect(ax0, awningTop, aw, awningH);
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillRect(ax0, awningTop, aw, 2);
+        drawScallopedValance(ctx, ax0, ax1, awningTop + awningH, awning.color);
       }
     }
   } else if (awning && entrances.length === 0) {
     // Full-width awning when no specific entrance on this wall
     const awningH = gfH * 0.15;
     const awningTop = gfTop - awningH;
-    ctx.fillStyle = awning.color;
-    ctx.fillRect(W * 0.05, awningTop, W * 0.9, awningH);
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx.fillRect(W * 0.05, awningTop + awningH - 2, W * 0.9, 3);
+    const ax0 = W * 0.05, ax1 = W * 0.95;
+    const awningStyle = awning.style || 'flat';
+    if (awningStyle === 'striped') {
+      ctx.fillStyle = awning.color;
+      ctx.fillRect(ax0, awningTop, ax1 - ax0, awningH);
+      const strW = Math.max(5, (ax1 - ax0) / 12);
+      ctx.fillStyle = awning.stripe_color || 'rgba(255,255,255,0.45)';
+      for (let sx = ax0; sx < ax1; sx += strW * 2) {
+        ctx.fillRect(sx, awningTop, strW, awningH);
+      }
+    } else {
+      ctx.fillStyle = awning.color;
+      ctx.fillRect(ax0, awningTop, ax1 - ax0, awningH);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(ax0, awningTop, ax1 - ax0, 2);
+    }
+    drawScallopedValance(ctx, ax0, ax1, awningTop + awningH, awning.color);
   }
 
   // === BASE/PLINTH ===
@@ -736,7 +782,9 @@ function createBuilding(bld, mode) {
 
       // Normal direction (outward)
       const nx = -dz / len, nz = dx / len;
-      const awningTop = h * 0.55;
+      const bldStories = style.stories || Math.max(1, Math.round(h / 3.5));
+      const floorH3d = h / bldStories;
+      const awningTop = floorH3d * 0.88;  // just below top of ground floor
       const awningBot = awningTop - awningDroop;
 
       // Place awning per entrance, or full-width if none
