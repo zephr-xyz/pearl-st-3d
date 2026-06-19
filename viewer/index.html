@@ -1369,24 +1369,42 @@ function createBuilding(bld, mode) {
       signPlane.rotation.y = Math.atan2(nx, nz);
       group.add(signPlane);
 
-      // Vertical pylon blade sign rising from marquee center
-      const pylonH = 2.8;
+      // Vertical pylon blade sign — tall enough to clear adjacent buildings
+      const pylonH = 7.0;
+      const pylonW = 1.6;
       const pylonCvs = document.createElement('canvas');
-      pylonCvs.width = 64; pylonCvs.height = 256;
+      pylonCvs.width = 128; pylonCvs.height = 512;
       const pCtx = pylonCvs.getContext('2d');
-      pCtx.fillStyle = '#c8aa30';
-      pCtx.fillRect(0, 0, 64, 256);
-      pCtx.fillStyle = '#1a1a1a';
-      pCtx.font = 'bold 18px sans-serif';
+      // Gold background with subtle gradient
+      const pylonGrad = pCtx.createLinearGradient(0, 0, 128, 0);
+      pylonGrad.addColorStop(0, '#c8a020');
+      pylonGrad.addColorStop(0.5, '#e8c840');
+      pylonGrad.addColorStop(1, '#c8a020');
+      pCtx.fillStyle = pylonGrad;
+      pCtx.fillRect(0, 0, 128, 512);
+      // Border
+      pCtx.strokeStyle = '#8a6800';
+      pCtx.lineWidth = 6;
+      pCtx.strokeRect(4, 4, 120, 504);
+      // "Boulder" neon-style text — rotated vertically
+      pCtx.save();
+      pCtx.translate(64, 256);
+      pCtx.rotate(-Math.PI / 2);
+      pCtx.fillStyle = '#cc1a1a';
+      pCtx.font = 'bold italic 54px Georgia, serif';
       pCtx.textAlign = 'center';
-      pCtx.save(); pCtx.translate(32, 128); pCtx.rotate(-Math.PI / 2);
-      pCtx.fillText('BOULDER', 0, 6);
+      pCtx.textBaseline = 'middle';
+      pCtx.fillText('BOULDER', 0, 0);
+      // White outline for neon effect
+      pCtx.strokeStyle = 'rgba(255,200,200,0.4)';
+      pCtx.lineWidth = 2;
+      pCtx.strokeText('BOULDER', 0, 0);
       pCtx.restore();
       const pylonTex = new THREE.CanvasTexture(pylonCvs);
       pylonTex.colorSpace = THREE.SRGBColorSpace;
       const pylon = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, pylonH, 0.12),
-        new THREE.MeshStandardMaterial({ map: pylonTex, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide })
+        new THREE.BoxGeometry(pylonW, pylonH, 0.18),
+        new THREE.MeshStandardMaterial({ map: pylonTex, roughness: 0.3, metalness: 0.4, side: THREE.DoubleSide })
       );
       pylon.position.set(
         wallCx + nx * (marqDepth * 0.5),
