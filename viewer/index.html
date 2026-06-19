@@ -379,7 +379,7 @@ function createProceduralFacade(style, wall, isPrimary = false) {
   }
 
   // === ART DECO TREATMENT ===
-  if (style.arch_style === 'art_deco' && isPrimary) {
+  if (style.arch_style === 'art_deco') {
     // Dark green painted ground floor
     const gfTop = (stories - 1) * floorH;
     ctx.fillStyle = '#2a5a1a';
@@ -401,23 +401,6 @@ function createProceduralFacade(style, wall, isPrimary = false) {
       ctx.fillStyle = rayColors[ri % rayColors.length];
       ctx.globalAlpha = 0.72;
       ctx.fill();
-    }
-    ctx.globalAlpha = 1.0;
-
-    // Smaller side fans on pilasters (~25% and ~75%)
-    for (const sfX of [W * 0.22, W * 0.78]) {
-      const sfR = fanR * 0.48;
-      for (let ri = 0; ri < 9; ri++) {
-        const a0 = (Math.PI * ri) / 9;
-        const a1 = (Math.PI * (ri + 0.85)) / 9;
-        ctx.beginPath();
-        ctx.moveTo(sfX, fanCY + H * 0.02);
-        ctx.arc(sfX, fanCY + H * 0.02, sfR, a0, a1);
-        ctx.closePath();
-        ctx.fillStyle = rayColors[ri % rayColors.length];
-        ctx.globalAlpha = 0.55;
-        ctx.fill();
-      }
     }
     ctx.globalAlpha = 1.0;
 
