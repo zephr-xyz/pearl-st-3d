@@ -1374,38 +1374,32 @@ function createBuilding(bld, mode) {
       let nx = -wdz / wlen, nz = wdx / wlen;
       const bldCx = bld.centroid_m[0], bldCz = bld.centroid_m[1];
 
-      // Collect all collinear exterior walls (same facing direction ±5°) to find
-      // the full facade span — the marquee should be centered on ALL of them,
-      // not just the primary wall segment.
-      const BEARING_TOL = 5;
-      const facadeWalls = bld.walls.filter(w => {
-        if (!w.is_exterior || !w.bearing) return false;
-        let diff = Math.abs(w.bearing - mWall.bearing) % 360;
-        if (diff > 180) diff = 360 - diff;
-        return diff <= BEARING_TOL;
-      });
-      // Build one long chain: find the overall start and end points along the wall direction
-      const wallDir = [wdx / wlen, wdz / wlen]; // unit vector along wall[0]
-      let minProj = Infinity, maxProj = -Infinity;
-      let minPt = [wx0, wz0], maxPt = [wx1, wz1];
-      for (const fw of facadeWalls) {
-        for (const vert of [fw.vertices[0], fw.vertices[1]]) {
-          const px = vert[0], pz = vert[2];
-          const proj = (px - wx0) * wallDir[0] + (pz - wz0) * wallDir[1];
-          if (proj < minProj) { minProj = proj; minPt = [px, pz]; }
-          if (proj > maxProj) { maxProj = proj; maxPt = [px, pz]; }
-        }
+      // Use the building footprint projected onto the primary wall's frame.
+      // This matches what a VLM sees: the whole building face as one image where
+      // "center" means the center of the full visible facade width.
+      const pRad = mWall.bearing * Math.PI / 180;
+      const pNx = Math.sin(pRad), pNz = Math.cos(pRad);
+      const pTx = pNz, pTz = -pNx; // tangent along facade
+      let tangMin = Infinity, tangMax = -Infinity, normMax = -Infinity;
+      for (const p of bld.footprint_m) {
+        const tProj = (p[0] - bldCx) * pTx + (p[1] - bldCz) * pTz;
+        const nProj = (p[0] - bldCx) * pNx + (p[1] - bldCz) * pNz;
+        tangMin = Math.min(tangMin, tProj); tangMax = Math.max(tangMax, tProj);
+        normMax = Math.max(normMax, nProj);
       }
-      const totalLen = maxProj - minProj;
-      // Center of the full combined facade
-      const wallCx = (minPt[0] + maxPt[0]) / 2;
-      const wallCz = (minPt[1] + maxPt[1]) / 2;
+      const totalLen = tangMax - tangMin;
+      // Feature position 0.5 → facade center; honoured from VLM-derived marquee_position
+      const marqFeatT = lf.marquee_position != null ? lf.marquee_position : 0.5;
+      const tangPos = tangMin + marqFeatT * totalLen;
+      // Position is at the facade face (normMax outward) at the given tangent offset
+      const wallCx = bldCx + tangPos * pTx + normMax * pNx;
+      const wallCz = bldCz + tangPos * pTz + normMax * pNz;
 
       // Ensure normal points away from building centroid
       if ((wallCx + nx - bldCx) ** 2 + (wallCz + nz - bldCz) ** 2 <
           (wallCx - bldCx) ** 2 + (wallCz - bldCz) ** 2) { nx = -nx; nz = -nz; }
 
-      const wallAngle = Math.atan2(wdz, wdx);
+      const wallAngle = Math.atan2(pTz, pTx);
       const marqW = totalLen * 0.88;
       const marqThick = 1.2;
       const marqDepth = 2.2;
