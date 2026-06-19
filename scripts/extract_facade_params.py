@@ -148,6 +148,43 @@ def extract_stories(desc, building_height):
     return 2
 
 
+def _parse_horizontal_position(desc_lower, subject_patterns):
+    """Extract a [0,1] horizontal position for a facade feature from freeform text.
+
+    subject_patterns: list of regex strings that match the feature name
+    (e.g. ["entrance", "door", "entry"] or ["marquee", "canopy", "awning"]).
+
+    Returns a float in [0, 1] (left=0, center=0.5, right=1), or None if not found.
+    Position words recognised:
+        far left / leftmost         → 0.10
+        left third / left side      → 0.25
+        center-left / left of center→ 0.35
+        center / central / middle   → 0.50
+        center-right / right of center → 0.65
+        right third / right side    → 0.75
+        far right / rightmost       → 0.90
+    """
+    subj = "(?:" + "|".join(subject_patterns) + ")"
+    # Ordered from most specific to least; first match wins.
+    PATTERNS = [
+        (r"far (?:left|leftmost)|leftmost",                            0.10),
+        (r"left third|left.{0,10}third|left side|left.{0,10}portion", 0.25),
+        (r"center.{0,6}left|left.{0,6}of.{0,6}center",                0.35),
+        (r"center|central|middle|centered",                            0.50),
+        (r"center.{0,6}right|right.{0,6}of.{0,6}center",              0.65),
+        (r"right third|right.{0,10}third|right side|right.{0,10}portion", 0.75),
+        (r"far (?:right|rightmost)|rightmost",                         0.90),
+        # Fallback: bare left/right within 8 words of the subject
+        (r"left",                                                       0.25),
+        (r"right",                                                      0.75),
+    ]
+    for pat, val in PATTERNS:
+        # Match: subject … position word, or position word … subject (within ~60 chars)
+        if re.search(rf"{subj}.{{0,60}}{pat}|{pat}.{{0,60}}{subj}", desc_lower):
+            return val
+    return None
+
+
 def extract_entrance_info(desc):
     """Extract entrance details from description."""
     desc_lower = desc.lower()
@@ -165,15 +202,19 @@ def extract_entrance_info(desc):
     elif "glass door" in desc_lower:
         info["style"] = "glass"
 
-    # Position hints
-    if re.search(r"entrance.*left|left.*entrance|door.*left|left.*door", desc_lower):
-        info["position"] = 0.3
-    elif re.search(r"entrance.*right|right.*entrance|door.*right|right.*door", desc_lower):
-        info["position"] = 0.7
-    elif re.search(r"entrance.*center|central.*entrance|center.*door", desc_lower):
-        info["position"] = 0.5
+    # Position — use the shared helper for finer-grained resolution
+    pos = _parse_horizontal_position(desc_lower, ["entrance", "door", "entry"])
+    if pos is not None:
+        info["position"] = pos
 
     return info
+
+
+def extract_marquee_position(desc):
+    """Return [0,1] horizontal position of the marquee/canopy on the facade, or None."""
+    if not re.search(r"marquee|canopy|awning|sign", desc.lower()):
+        return None
+    return _parse_horizontal_position(desc.lower(), ["marquee", "canopy", "awning", "sign"])
 
 
 def extract_accent_color(desc):
@@ -269,7 +310,7 @@ def parse_visual_description(desc, building_height=None):
     if not desc:
         return None
 
-    return {
+    params = {
         "material": extract_material(desc),
         "color": extract_color(desc),
         "accent": extract_accent_color(desc),
@@ -279,6 +320,11 @@ def parse_visual_description(desc, building_height=None):
         "awning": extract_awning(desc),
         "details": extract_architectural_details(desc),
     }
+    # Store marquee position when the description mentions one
+    marq_pos = extract_marquee_position(desc)
+    if marq_pos is not None:
+        params["marquee_position"] = marq_pos
+    return params
 
 
 # --- Window count validation from Mapillary image ---

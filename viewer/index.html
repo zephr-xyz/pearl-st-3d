@@ -1372,7 +1372,12 @@ function createBuilding(bld, mode) {
       const wdx = wx1 - wx0, wdz = wz1 - wz0;
       const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
       let nx = -wdz / wlen, nz = wdx / wlen;
-      const wallCx = (wx0 + wx1) / 2, wallCz = (wz0 + wz1) / 2;
+      // Align marquee with entrance position if available, else wall center
+      const mEnts = mWall.entrances || [];
+      const marqT = mEnts.length > 0
+        ? mEnts.reduce((s, e) => s + e.t, 0) / mEnts.length
+        : 0.5;
+      const wallCx = wx0 + wdx * marqT, wallCz = wz0 + wdz * marqT;
       const bldCx = bld.centroid_m[0], bldCz = bld.centroid_m[1];
       // Ensure normal points away from building centroid
       if ((wallCx + nx - bldCx) ** 2 + (wallCz + nz - bldCz) ** 2 <
