@@ -290,7 +290,7 @@ function hexToColor(hex) {
 }
 
 // Procedural window texture
-function createProceduralFacade(style, wall) {
+function createProceduralFacade(style, wall, isPrimary = false) {
   const width = wall.length;
   const height = wall.height;
   const entrances = wall.entrances || [];
@@ -379,7 +379,7 @@ function createProceduralFacade(style, wall) {
   }
 
   // === ART DECO TREATMENT ===
-  if (style.arch_style === 'art_deco') {
+  if (style.arch_style === 'art_deco' && isPrimary) {
     // Dark green painted ground floor
     const gfTop = (stories - 1) * floorH;
     ctx.fillStyle = '#2a5a1a';
@@ -481,7 +481,7 @@ function createProceduralFacade(style, wall) {
 
   // === SIGNAGE BAND (between cornice and first window row, or above ground floor) ===
   const signage = style.signage;
-  if (signage && stories >= 1) {
+  if (signage && stories >= 1 && style.arch_style !== 'art_deco') {
     const bandY = stories === 1 ? corniceH + 4 : (stories - 1) * floorH + 4;
     const bandH = floorH * 0.18;
     ctx.fillStyle = signage.band_color || '#2a2a2a';
@@ -801,13 +801,19 @@ function createBuilding(bld, mode) {
   const style = bld.style || {};
 
   // Primary wall = wall with entrances (most likely street-facing), else longest exterior
+  // Landmark features can override with primary_wall_idx to correct party-wall misdetection
+  const lf = style.landmark_features || {};
   let primaryWallIdx = -1;
-  let primaryScore = -1;
-  for (let i = 0; i < bld.walls.length; i++) {
-    const w = bld.walls[i];
-    if (!w.is_exterior) continue;
-    const score = (w.entrances || []).length * 10000 + w.length;
-    if (score > primaryScore) { primaryScore = score; primaryWallIdx = i; }
+  if (typeof lf.primary_wall_idx === 'number') {
+    primaryWallIdx = lf.primary_wall_idx;
+  } else {
+    let primaryScore = -1;
+    for (let i = 0; i < bld.walls.length; i++) {
+      const w = bld.walls[i];
+      if (!w.is_exterior) continue;
+      const score = (w.entrances || []).length * 10000 + w.length;
+      if (score > primaryScore) { primaryScore = score; primaryWallIdx = i; }
+    }
   }
 
   for (let wallIdx = 0; wallIdx < bld.walls.length; wallIdx++) {
@@ -841,7 +847,7 @@ function createBuilding(bld, mode) {
         side: THREE.DoubleSide
       });
     } else if (mode === 'textured' || mode === 'color') {
-      const facadeTex = createProceduralFacade(style, wall);
+      const facadeTex = createProceduralFacade(style, wall, wallIdx === primaryWallIdx);
       material = new THREE.MeshStandardMaterial({
         map: facadeTex, roughness: matRoughness, metalness: matMetalness,
         side: THREE.DoubleSide
@@ -1296,14 +1302,8 @@ function createBuilding(bld, mode) {
   }
 
   // Marquee — projecting canopy for theaters/cinemas
-  if (mode !== 'wireframe' && style.landmark_features && style.landmark_features.marquee) {
-    // Find entrance wall (primary street-facing wall)
-    let mWall = null, mScore = -1;
-    for (const w of bld.walls) {
-      if (!w.is_exterior) continue;
-      const s = (w.entrances || []).length * 10000 + w.length;
-      if (s > mScore) { mScore = s; mWall = w; }
-    }
+  if (mode !== 'wireframe' && lf.marquee) {
+    const mWall = primaryWallIdx >= 0 ? bld.walls[primaryWallIdx] : null;
     if (mWall) {
       const v = mWall.vertices;
       const wx0 = v[0][0], wz0 = v[0][2], wx1 = v[1][0], wz1 = v[1][2];
@@ -1318,30 +1318,38 @@ function createBuilding(bld, mode) {
 
       const wallAngle = Math.atan2(wdz, wdx);
       const marqW = wlen * 0.88;
-      const marqThick = 0.45;
-      const marqDepth = 2.0;
-      const marqY = 3.2;
+      const marqThick = 1.2;
+      const marqDepth = 2.2;
+      const marqY = 3.8;
 
-      // Canopy top surface color
-      const canopyMat = new THREE.MeshStandardMaterial({ color: '#d8d2b8', roughness: 0.8 });
+      // Canopy — dark green like the real Boulder Theater canopy
+      const canopyMat = new THREE.MeshStandardMaterial({ color: '#1a4a1a', roughness: 0.75 });
 
       // Front face canvas — "BOULDER" marquee sign
       const mCvs = document.createElement('canvas');
       mCvs.width = 512; mCvs.height = 64;
       const mCtx = mCvs.getContext('2d');
-      mCtx.fillStyle = '#e8e4d4';
+      mCtx.fillStyle = '#1a1a1a';
       mCtx.fillRect(0, 0, 512, 64);
-      // Lightbulb border
-      mCtx.fillStyle = '#f5f090';
-      for (let bx = 10; bx < 512; bx += 22) {
-        mCtx.beginPath(); mCtx.arc(bx, 56, 4, 0, Math.PI * 2); mCtx.fill();
-        mCtx.beginPath(); mCtx.arc(bx, 8, 4, 0, Math.PI * 2); mCtx.fill();
+      // Green border stripe
+      mCtx.fillStyle = '#2a6a2a';
+      mCtx.fillRect(0, 0, 512, 8);
+      mCtx.fillRect(0, 56, 512, 8);
+      // Lightbulbs along top and bottom edges
+      mCtx.fillStyle = '#f8f040';
+      for (let bx = 16; bx < 512; bx += 24) {
+        mCtx.beginPath(); mCtx.arc(bx, 54, 5, 0, Math.PI * 2); mCtx.fill();
+        mCtx.beginPath(); mCtx.arc(bx, 10, 5, 0, Math.PI * 2); mCtx.fill();
       }
-      // "BOULDER" neon script text
-      mCtx.fillStyle = '#dd2020';
-      mCtx.font = 'bold italic 30px Georgia, serif';
+      // "BOULDER" neon red text
+      mCtx.fillStyle = '#ff2020';
+      mCtx.font = 'bold italic 36px Georgia, serif';
       mCtx.textAlign = 'center'; mCtx.textBaseline = 'middle';
       mCtx.fillText('BOULDER', 256, 32);
+      // White glow outline
+      mCtx.strokeStyle = 'rgba(255,160,160,0.6)';
+      mCtx.lineWidth = 2;
+      mCtx.strokeText('BOULDER', 256, 32);
       const mTex = new THREE.CanvasTexture(mCvs);
       mTex.colorSpace = THREE.SRGBColorSpace;
       const signMat = new THREE.MeshStandardMaterial({ map: mTex, roughness: 0.5, side: THREE.DoubleSide });
@@ -1359,12 +1367,12 @@ function createBuilding(bld, mode) {
       group.add(canopy);
 
       // Front sign face (plane at outer edge of canopy)
-      const signH = 0.9;
+      const signH = 1.6;
       const signPlane = new THREE.Mesh(new THREE.PlaneGeometry(marqW * 0.88, signH), signMat);
       signPlane.position.set(
-        wallCx + nx * (marqDepth + 0.05),
+        wallCx + nx * (marqDepth + 0.08),
         marqY,
-        wallCz + nz * (marqDepth + 0.05)
+        wallCz + nz * (marqDepth + 0.08)
       );
       signPlane.rotation.y = Math.atan2(nx, nz);
       group.add(signPlane);
