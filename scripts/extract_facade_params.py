@@ -177,28 +177,11 @@ def extract_entrance_info(desc):
 
 
 def extract_accent_color(desc):
-    """Extract accent/trim color from description.
-    Returns None when no trim color is explicitly described — callers should
-    then fall back to the facade color rather than inventing white bands."""
-    desc_lower = desc.lower()
-    patterns = {
-        "#ffffff": [r"white.*(?:trim|frame|cornice|scrollwork|frieze|relief)",
-                    r"(?:trim|frame|cornice|scrollwork|frieze|relief).*white"],
-        "#ccaa00": [r"gold.*(?:trim|accent|detail)", r"brass", r"gilded"],
-        "#1a237e": [r"(?:blue|navy).*(?:trim|frame|beam|steel)",
-                    r"(?:trim|frame|beam|steel).*(?:blue|navy)"],
-        "#4a4a4a": [r"(?:black|dark).*(?:metal|steel|iron).*(?:trim|frame|beam)",
-                    r"(?:trim|frame|beam).*(?:black|dark).*(?:metal|steel|iron)"],
-        "#808080": [r"(?:gray|grey).*(?:trim|frame|concrete)",
-                    r"(?:trim|frame|concrete).*(?:gray|grey)", r"silver.*(?:trim|frame)"],
-        "#cc2222": [r"red.*trim", r"red.*frame"],
-        "#2a6a2a": [r"green.*trim", r"green.*frame"],
-    }
-    for hex_color, pats in patterns.items():
-        for pat in pats:
-            if re.search(pat, desc_lower):
-                return hex_color
-    return None  # no explicit trim color — viewer falls back to facade color
+    """Always return None — trim color defaults to facade color in the viewer.
+    VLM descriptions are not reliable enough for trim extraction: "white-framed windows"
+    means window glass contrast, not architectural trim; "red awning" bleeds into frames.
+    Use MANUAL_OVERRIDES in enhance_landmarks.py for explicit exceptions."""
+    return None
 
 
 _AWNING_COLORS = [
