@@ -1372,19 +1372,41 @@ function createBuilding(bld, mode) {
       const wdx = wx1 - wx0, wdz = wz1 - wz0;
       const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
       let nx = -wdz / wlen, nz = wdx / wlen;
-      // Align marquee with entrance position if available, else wall center
-      const mEnts = mWall.entrances || [];
-      const marqT = mEnts.length > 0
-        ? mEnts.reduce((s, e) => s + e.t, 0) / mEnts.length
-        : 0.5;
-      const wallCx = wx0 + wdx * marqT, wallCz = wz0 + wdz * marqT;
       const bldCx = bld.centroid_m[0], bldCz = bld.centroid_m[1];
+
+      // Collect all collinear exterior walls (same facing direction ±5°) to find
+      // the full facade span — the marquee should be centered on ALL of them,
+      // not just the primary wall segment.
+      const BEARING_TOL = 5;
+      const facadeWalls = bld.walls.filter(w => {
+        if (!w.is_exterior || !w.bearing) return false;
+        let diff = Math.abs(w.bearing - mWall.bearing) % 360;
+        if (diff > 180) diff = 360 - diff;
+        return diff <= BEARING_TOL;
+      });
+      // Build one long chain: find the overall start and end points along the wall direction
+      const wallDir = [wdx / wlen, wdz / wlen]; // unit vector along wall[0]
+      let minProj = Infinity, maxProj = -Infinity;
+      let minPt = [wx0, wz0], maxPt = [wx1, wz1];
+      for (const fw of facadeWalls) {
+        for (const vert of [fw.vertices[0], fw.vertices[1]]) {
+          const px = vert[0], pz = vert[2];
+          const proj = (px - wx0) * wallDir[0] + (pz - wz0) * wallDir[1];
+          if (proj < minProj) { minProj = proj; minPt = [px, pz]; }
+          if (proj > maxProj) { maxProj = proj; maxPt = [px, pz]; }
+        }
+      }
+      const totalLen = maxProj - minProj;
+      // Center of the full combined facade
+      const wallCx = (minPt[0] + maxPt[0]) / 2;
+      const wallCz = (minPt[1] + maxPt[1]) / 2;
+
       // Ensure normal points away from building centroid
       if ((wallCx + nx - bldCx) ** 2 + (wallCz + nz - bldCz) ** 2 <
           (wallCx - bldCx) ** 2 + (wallCz - bldCz) ** 2) { nx = -nx; nz = -nz; }
 
       const wallAngle = Math.atan2(wdz, wdx);
-      const marqW = wlen * 0.88;
+      const marqW = totalLen * 0.88;
       const marqThick = 1.2;
       const marqDepth = 2.2;
       const marqY = 3.8;
