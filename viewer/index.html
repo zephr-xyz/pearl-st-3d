@@ -125,6 +125,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const canvas = document.getElementById('canvas');
 const tooltip = document.getElementById('tooltip');
 const textureLoader = new THREE.TextureLoader();
+textureLoader.crossOrigin = 'anonymous';
 
 const loadingOverlay = document.getElementById('loading-overlay');
 const loadingFill = document.getElementById('loading-bar-fill');
@@ -373,6 +374,73 @@ function createProceduralFacade(style, wall) {
       ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
       const s = Math.random() * 3 + 1;
       ctx.fillRect(Math.random() * W, Math.random() * H, s, s);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  // === ART DECO TREATMENT ===
+  if (style.arch_style === 'art_deco') {
+    // Dark green painted ground floor
+    const gfTop = (stories - 1) * floorH;
+    ctx.fillStyle = '#2a5a1a';
+    ctx.fillRect(0, gfTop, W, H - gfTop);
+
+    // Sunburst fan — center top, spreading downward
+    const fanCX = W / 2;
+    const fanCY = H * 0.06;
+    const fanR  = H * 0.30;
+    const numRays = 14;
+    const rayColors = ['#c8a832', '#8a6030', '#2a6a50', '#c8a832', '#a87828'];
+    for (let ri = 0; ri < numRays; ri++) {
+      const a0 = (Math.PI * ri) / numRays;
+      const a1 = (Math.PI * (ri + 0.88)) / numRays;
+      ctx.beginPath();
+      ctx.moveTo(fanCX, fanCY);
+      ctx.arc(fanCX, fanCY, fanR, a0, a1);
+      ctx.closePath();
+      ctx.fillStyle = rayColors[ri % rayColors.length];
+      ctx.globalAlpha = 0.72;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Smaller side fans on pilasters (~25% and ~75%)
+    for (const sfX of [W * 0.22, W * 0.78]) {
+      const sfR = fanR * 0.48;
+      for (let ri = 0; ri < 9; ri++) {
+        const a0 = (Math.PI * ri) / 9;
+        const a1 = (Math.PI * (ri + 0.85)) / 9;
+        ctx.beginPath();
+        ctx.moveTo(sfX, fanCY + H * 0.02);
+        ctx.arc(sfX, fanCY + H * 0.02, sfR, a0, a1);
+        ctx.closePath();
+        ctx.fillStyle = rayColors[ri % rayColors.length];
+        ctx.globalAlpha = 0.55;
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Central arched window (behind fan, upper section)
+    const archW = W * 0.14;
+    const archBottom = gfTop - H * 0.04;
+    const archTop = fanCY + fanR * 0.25;
+    const archMid = archTop + (archBottom - archTop) * 0.30;
+    ctx.fillStyle = '#1a3a4a';
+    ctx.beginPath();
+    ctx.moveTo(fanCX - archW / 2, archBottom);
+    ctx.lineTo(fanCX - archW / 2, archMid);
+    ctx.arc(fanCX, archMid, archW / 2, Math.PI, 0);
+    ctx.lineTo(fanCX + archW / 2, archBottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // Vertical pilasters
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#f0ebd0';
+    const pilW2 = W * 0.022;
+    for (const px of [W * 0.12, W * 0.33, W * 0.67, W * 0.88]) {
+      ctx.fillRect(px - pilW2 / 2, H * 0.12, pilW2, gfTop - H * 0.12);
     }
     ctx.globalAlpha = 1.0;
   }
@@ -732,7 +800,18 @@ function createBuilding(bld, mode) {
 
   const style = bld.style || {};
 
-  for (const wall of bld.walls) {
+  // Primary wall = wall with entrances (most likely street-facing), else longest exterior
+  let primaryWallIdx = -1;
+  let primaryScore = -1;
+  for (let i = 0; i < bld.walls.length; i++) {
+    const w = bld.walls[i];
+    if (!w.is_exterior) continue;
+    const score = (w.entrances || []).length * 10000 + w.length;
+    if (score > primaryScore) { primaryScore = score; primaryWallIdx = i; }
+  }
+
+  for (let wallIdx = 0; wallIdx < bld.walls.length; wallIdx++) {
+    const wall = bld.walls[wallIdx];
     const positions = new Float32Array(wall.vertices.flat());
     const uvs = new Float32Array(wall.uvs.flat());
 
@@ -740,6 +819,13 @@ function createBuilding(bld, mode) {
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geom.computeVertexNormals();
+
+    const matRoughness = style.material === 'glass' ? 0.1 :
+      style.material === 'stucco' ? 0.92 :
+      style.material === 'stone' ? 0.88 :
+      style.material && style.material.includes('brick') ? 0.85 : 0.8;
+    const matMetalness = style.material === 'glass' ? 0.1 :
+      style.material === 'metal' ? 0.6 : 0.02;
 
     let material;
 
@@ -756,13 +842,6 @@ function createBuilding(bld, mode) {
       });
     } else if (mode === 'textured' || mode === 'color') {
       const facadeTex = createProceduralFacade(style, wall);
-      // PBR roughness varies by material
-      const matRoughness = style.material === 'glass' ? 0.1 :
-        style.material === 'stucco' ? 0.92 :
-        style.material === 'stone' ? 0.88 :
-        style.material && style.material.includes('brick') ? 0.85 : 0.8;
-      const matMetalness = style.material === 'glass' ? 0.1 :
-        style.material === 'metal' ? 0.6 : 0.02;
       material = new THREE.MeshStandardMaterial({
         map: facadeTex, roughness: matRoughness, metalness: matMetalness,
         side: THREE.DoubleSide
@@ -1213,6 +1292,109 @@ function createBuilding(bld, mode) {
       ped.material.side = THREE.DoubleSide;
       ped.castShadow = true;
       group.add(ped);
+    }
+  }
+
+  // Marquee — projecting canopy for theaters/cinemas
+  if (mode !== 'wireframe' && style.landmark_features && style.landmark_features.marquee) {
+    // Find entrance wall (primary street-facing wall)
+    let mWall = null, mScore = -1;
+    for (const w of bld.walls) {
+      if (!w.is_exterior) continue;
+      const s = (w.entrances || []).length * 10000 + w.length;
+      if (s > mScore) { mScore = s; mWall = w; }
+    }
+    if (mWall) {
+      const v = mWall.vertices;
+      const wx0 = v[0][0], wz0 = v[0][2], wx1 = v[1][0], wz1 = v[1][2];
+      const wdx = wx1 - wx0, wdz = wz1 - wz0;
+      const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
+      let nx = -wdz / wlen, nz = wdx / wlen;
+      const wallCx = (wx0 + wx1) / 2, wallCz = (wz0 + wz1) / 2;
+      const bldCx = bld.centroid_m[0], bldCz = bld.centroid_m[1];
+      // Ensure normal points away from building centroid
+      if ((wallCx + nx - bldCx) ** 2 + (wallCz + nz - bldCz) ** 2 <
+          (wallCx - bldCx) ** 2 + (wallCz - bldCz) ** 2) { nx = -nx; nz = -nz; }
+
+      const wallAngle = Math.atan2(wdz, wdx);
+      const marqW = wlen * 0.88;
+      const marqThick = 0.45;
+      const marqDepth = 2.0;
+      const marqY = 3.2;
+
+      // Canopy top surface color
+      const canopyMat = new THREE.MeshStandardMaterial({ color: '#d8d2b8', roughness: 0.8 });
+
+      // Front face canvas — "BOULDER" marquee sign
+      const mCvs = document.createElement('canvas');
+      mCvs.width = 512; mCvs.height = 64;
+      const mCtx = mCvs.getContext('2d');
+      mCtx.fillStyle = '#e8e4d4';
+      mCtx.fillRect(0, 0, 512, 64);
+      // Lightbulb border
+      mCtx.fillStyle = '#f5f090';
+      for (let bx = 10; bx < 512; bx += 22) {
+        mCtx.beginPath(); mCtx.arc(bx, 56, 4, 0, Math.PI * 2); mCtx.fill();
+        mCtx.beginPath(); mCtx.arc(bx, 8, 4, 0, Math.PI * 2); mCtx.fill();
+      }
+      // "BOULDER" neon script text
+      mCtx.fillStyle = '#dd2020';
+      mCtx.font = 'bold italic 30px Georgia, serif';
+      mCtx.textAlign = 'center'; mCtx.textBaseline = 'middle';
+      mCtx.fillText('BOULDER', 256, 32);
+      const mTex = new THREE.CanvasTexture(mCvs);
+      mTex.colorSpace = THREE.SRGBColorSpace;
+      const signMat = new THREE.MeshStandardMaterial({ map: mTex, roughness: 0.5, side: THREE.DoubleSide });
+
+      // Canopy box
+      const canopyCx = wallCx + nx * marqDepth / 2;
+      const canopyCz = wallCz + nz * marqDepth / 2;
+      const canopy = new THREE.Mesh(
+        new THREE.BoxGeometry(marqW, marqThick, marqDepth),
+        canopyMat
+      );
+      canopy.position.set(canopyCx, marqY, canopyCz);
+      canopy.rotation.y = -wallAngle;
+      canopy.castShadow = true;
+      group.add(canopy);
+
+      // Front sign face (plane at outer edge of canopy)
+      const signH = 0.9;
+      const signPlane = new THREE.Mesh(new THREE.PlaneGeometry(marqW * 0.88, signH), signMat);
+      signPlane.position.set(
+        wallCx + nx * (marqDepth + 0.05),
+        marqY,
+        wallCz + nz * (marqDepth + 0.05)
+      );
+      signPlane.rotation.y = Math.atan2(nx, nz);
+      group.add(signPlane);
+
+      // Vertical pylon blade sign rising from marquee center
+      const pylonH = 2.8;
+      const pylonCvs = document.createElement('canvas');
+      pylonCvs.width = 64; pylonCvs.height = 256;
+      const pCtx = pylonCvs.getContext('2d');
+      pCtx.fillStyle = '#c8aa30';
+      pCtx.fillRect(0, 0, 64, 256);
+      pCtx.fillStyle = '#1a1a1a';
+      pCtx.font = 'bold 18px sans-serif';
+      pCtx.textAlign = 'center';
+      pCtx.save(); pCtx.translate(32, 128); pCtx.rotate(-Math.PI / 2);
+      pCtx.fillText('BOULDER', 0, 6);
+      pCtx.restore();
+      const pylonTex = new THREE.CanvasTexture(pylonCvs);
+      pylonTex.colorSpace = THREE.SRGBColorSpace;
+      const pylon = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, pylonH, 0.12),
+        new THREE.MeshStandardMaterial({ map: pylonTex, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide })
+      );
+      pylon.position.set(
+        wallCx + nx * (marqDepth * 0.5),
+        marqY + marqThick / 2 + pylonH / 2,
+        wallCz + nz * (marqDepth * 0.5)
+      );
+      pylon.rotation.y = -wallAngle;
+      group.add(pylon);
     }
   }
 
@@ -1733,6 +1915,13 @@ function setMode(mode) {
 document.getElementById('btn-textured').addEventListener('click', () => { setMode('textured'); document.getElementById('btn-textured').classList.add('active'); });
 document.getElementById('btn-color').addEventListener('click', () => { setMode('color'); document.getElementById('btn-color').classList.add('active'); });
 document.getElementById('btn-wireframe').addEventListener('click', () => { setMode('wireframe'); document.getElementById('btn-wireframe').classList.add('active'); });
+
+// Expose camera for external navigation (dev/eval use)
+window.jumpTo = (px, py, pz, tx, ty, tz) => {
+  camera.position.set(px, py, pz);
+  controls.target.set(tx ?? 0, ty ?? 4, tz ?? 0);
+  controls.update();
+};
 
 // Camera presets
 document.getElementById('btn-street').addEventListener('click', () => {

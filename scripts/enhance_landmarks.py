@@ -523,7 +523,8 @@ def _extract_awning_from_desc(desc: str):
 # ---------------------------------------------------------------------------
 MANUAL_OVERRIDES = {
     "Boulder County Government":           {"height": 20.0, "stories": 4},
-    "Boulder Theater":                     {"height": 14.0, "stories": 3},
+    "Boulder Theater":                     {"height": 14.0, "stories": 3,
+                                            "material": "stucco", "color": "#e2dbbe"},
     "Hotel Boulderado":                    {"height": 18.0, "stories": 5,
                                             "awning": {"color": "#2d6a2d", "style": "flat"},
                                             "accent": "#4a2e14"},
@@ -736,6 +737,10 @@ def main():
                     style["awning"] = ov["awning"]
                 if "accent" in ov:
                     style["accent"] = ov["accent"]
+                if "material" in ov:
+                    style["material"] = ov["material"]
+                if "color" in ov:
+                    style["color"] = ov["color"]
                 break
 
         # ── VD-based awning pass (runs after manual overrides) ────────────
