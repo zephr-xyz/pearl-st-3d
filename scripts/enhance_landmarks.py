@@ -74,14 +74,27 @@ def _era(year: int) -> str:
     return "contemporary"
 
 
-def _commons_thumb(filename: str, width: int = 800) -> str:
-    """Convert a Wikimedia Commons filename to a thumbnail URL."""
-    import hashlib
-    fname = filename.replace(" ", "_")
-    md5 = hashlib.md5(fname.encode("utf-8")).hexdigest()
-    enc = urllib.parse.quote(fname, safe="")
-    return (f"https://upload.wikimedia.org/wikipedia/commons/thumb/"
-            f"{md5[0]}/{md5[:2]}/{enc}/{width}px-{enc}")
+def _commons_thumb(filename: str, width: int = 1024) -> str:
+    """Fetch the correct thumbnail URL from the Wikimedia Commons API."""
+    params = urllib.parse.urlencode({
+        "action": "query", "titles": f"File:{filename}",
+        "prop": "imageinfo", "iiprop": "url", "iiurlwidth": str(width),
+        "format": "json", "origin": "*",
+    })
+    req = urllib.request.Request(
+        f"https://commons.wikimedia.org/w/api.php?{params}",
+        headers={"User-Agent": WDQS_UA},
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(resp.read())
+        for page in data.get("query", {}).get("pages", {}).values():
+            info = page.get("imageinfo", [])
+            if info:
+                return info[0].get("thumburl", "")
+    except Exception as exc:
+        print(f"  WARN: Commons thumb fetch {filename}: {exc}")
+    return ""
 
 
 def load_osm_buildings(bbox, cache_path: str, force_refresh: bool = False) -> list:
