@@ -235,6 +235,7 @@ scene.background = skyTex;
 setProgress(10, 'Loading buildings...');
 const resp = await fetch('scene.json');
 const data = await resp.json();
+window._sceneData = data; // make accessible to top-level createBuilding
 setProgress(40, 'Loading terrain...');
 
 // Load terrain for elevation lookup
@@ -783,19 +784,62 @@ function createBuilding(bld, mode) {
 
   const style = bld.style || {};
 
-  // Primary wall = wall with entrances (most likely street-facing), else longest exterior
-  // Landmark features can override with primary_wall_idx to correct party-wall misdetection
   const lf = style.landmark_features || {};
+
+  // Primary wall: road-facing detection using wall bearing + road proximity/alignment.
+  // This is scalable — works for any building without manual overrides.
+  // Fall back to entrance scoring when no qualifying road is nearby.
   let primaryWallIdx = -1;
   if (typeof lf.primary_wall_idx === 'number') {
     primaryWallIdx = lf.primary_wall_idx;
   } else {
-    let primaryScore = -1;
+    const roads = (window._sceneData && window._sceneData.roads) || [];
+    let bestRoadScore = 0;
     for (let i = 0; i < bld.walls.length; i++) {
       const w = bld.walls[i];
-      if (!w.is_exterior) continue;
-      const score = (w.entrances || []).length * 10000 + w.length;
-      if (score > primaryScore) { primaryScore = score; primaryWallIdx = i; }
+      if (!w.is_exterior || !w.bearing) continue;
+      const bearingRad = w.bearing * Math.PI / 180;
+      const wnx = Math.sin(bearingRad), wnz = Math.cos(bearingRad);
+      const v = w.vertices;
+      const wcx = (v[0][0] + v[1][0]) / 2, wcz = (v[0][2] + v[1][2]) / 2;
+      // Score this wall by proximity + alignment to nearby roads
+      let wallScore = 0;
+      for (const road of roads) {
+        if (road.subclass === 'parking_aisle') continue;
+        const pts = road.points;
+        for (let ri = 0; ri < pts.length - 1; ri++) {
+          const ax = pts[ri][0], az = pts[ri][1];
+          const bx = pts[ri+1][0], bz = pts[ri+1][1];
+          const ddx = bx-ax, ddz = bz-az;
+          const len2 = ddx*ddx + ddz*ddz;
+          if (len2 < 0.01) continue;
+          let t = ((wcx-ax)*ddx + (wcz-az)*ddz) / len2;
+          t = Math.max(0, Math.min(1, t));
+          const px = ax + t*ddx, pz = az + t*ddz;
+          const rx = px - wcx, rz = pz - wcz;
+          const dist = Math.sqrt(rx*rx + rz*rz);
+          if (dist < 1 || dist > 35) continue;
+          const align = (wnx * rx + wnz * rz) / dist; // +1 = wall faces road
+          if (align < 0.25) continue;
+          // Weight by road class: named residential/secondary roads score higher
+          const classWeight = road.class === 'residential' || road.class === 'secondary' ? 2.0
+            : road.class === 'service' ? 0.3
+            : road.class === 'footway' ? 1.5 : 1.0;
+          const s = (align * classWeight) / dist;
+          if (s > wallScore) wallScore = s;
+        }
+      }
+      if (wallScore > bestRoadScore) { bestRoadScore = wallScore; primaryWallIdx = i; }
+    }
+    // Fallback: entrance count × 10000 + length
+    if (primaryWallIdx < 0) {
+      let primaryScore = -1;
+      for (let i = 0; i < bld.walls.length; i++) {
+        const w = bld.walls[i];
+        if (!w.is_exterior) continue;
+        const score = (w.entrances || []).length * 10000 + w.length;
+        if (score > primaryScore) { primaryScore = score; primaryWallIdx = i; }
+      }
     }
   }
 
@@ -1095,13 +1139,48 @@ function createBuilding(bld, mode) {
 
     // NAIP-derived roof profile (multi-level stepped massing)
     if (bld.roof_profile) {
+      // Tier sizing and placement: use primary wall's reference frame so the tier is
+      // correctly sized (spans facade width) and flush against the street-facing side.
+      let tierCx = cx, tierCz = cz, tierRotY = -buildingAngle;
+      let tierFacadeW = fW, tierFacadeD = fD * 0.30;
+      if (primaryWallIdx >= 0) {
+        const pw = bld.walls[primaryWallIdx];
+        if (pw && pw.bearing != null) {
+          const pRad = pw.bearing * Math.PI / 180;
+          const pNx = Math.sin(pRad), pNz = Math.cos(pRad);
+          // Wall-tangent direction (along the facade face)
+          const pTx = pNz, pTz = -pNx;
+          // Project footprint onto primary wall's frame (normal + tangent)
+          let normMin = Infinity, normMax = -Infinity;
+          let tangMin = Infinity, tangMax = -Infinity;
+          for (const p of bld.footprint_m) {
+            const dx = p[0] - cx, dz = p[1] - cz;
+            const n = dx * pNx + dz * pNz;
+            const t = dx * pTx + dz * pTz;
+            normMin = Math.min(normMin, n); normMax = Math.max(normMax, n);
+            tangMin = Math.min(tangMin, t); tangMax = Math.max(tangMax, t);
+          }
+          // Width = facade span, depth = 30% of building depth in normal direction
+          tierFacadeW = tangMax - tangMin;
+          tierFacadeD = (normMax - normMin) * 0.30;
+          // Center along facade, outer face flush with primary wall
+          const normCenter = normMax - tierFacadeD / 2;
+          const tangCenter = (tangMin + tangMax) / 2;
+          tierCx = cx + tangCenter * pTx + normCenter * pNx;
+          tierCz = cz + tangCenter * pTz + normCenter * pNz;
+          // Rotate so tier box X-axis aligns with facade tangent
+          tierRotY = -Math.atan2(pTz, pTx);
+        }
+      }
       for (const level of bld.roof_profile) {
-        const tierW = fW * level.fraction;
-        const tierD = fD * level.fraction;
         const tierH = level.height_add;
-        const tier = new THREE.Mesh(new THREE.BoxGeometry(tierW, tierH, tierD), tierMat);
-        tier.position.set(cx, h + tierH / 2, cz);
-        tier.rotation.y = -buildingAngle;
+        const frac = level.fraction != null ? level.fraction : 1.0;
+        const tier = new THREE.Mesh(
+          new THREE.BoxGeometry(tierFacadeW * frac, tierH, tierFacadeD * frac),
+          tierMat
+        );
+        tier.position.set(tierCx, h + tierH / 2, tierCz);
+        tier.rotation.y = tierRotY;
         tier.castShadow = true;
         tier.receiveShadow = true;
         group.add(tier);
