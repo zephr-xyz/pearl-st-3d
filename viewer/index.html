@@ -1927,7 +1927,7 @@ for (const feat of (data.ground_features || [])) {
 
   const verts = [];
   for (const p of triPts) {
-    verts.push(p[0], getTerrainElevation(p[0], p[1]) + 0.01, p[1]);
+    verts.push(p[0], getTerrainElevation(p[0], p[1]) + 0.5, p[1]);
   }
 
   const geom = new THREE.BufferGeometry();
@@ -1973,7 +1973,7 @@ for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'pedestrian' ? 6 : road.class === 'footway' ? 2 : 2.5) / 2;
   const color = roadColors[road.class] || 0x888888;
-  const y = road.class === 'footway' || road.class === 'pedestrian' ? 0.15 : 0.12;
+  const y = 0.5;
 
   const verts = [];
   for (let i = 0; i < road.points.length - 1; i++) {
@@ -2237,7 +2237,7 @@ terrainGeom.computeVertexNormals();
 const terrainMat = new THREE.MeshStandardMaterial({
   color: 0x8a8580, roughness: 0.95, metalness: 0,
   side: THREE.DoubleSide,
-  depthWrite: false,  // never occlude roads/parks above it (log depth buffer makes polygonOffset unreliable at distance)
+  polygonOffset: true, polygonOffsetFactor: 10, polygonOffsetUnits: 10
 });
 const terrainMesh = new THREE.Mesh(terrainGeom, terrainMat);
 terrainMesh.rotation.x = -Math.PI / 2;
