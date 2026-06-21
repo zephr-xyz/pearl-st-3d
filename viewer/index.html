@@ -291,7 +291,8 @@ function hexToColor(hex) {
 }
 
 // Procedural window texture
-function createProceduralFacade(style, wall, isPrimary = false) {
+function createProceduralFacade(style, wall, isPrimary, bldId) {
+  isPrimary = isPrimary || false;
   const width = wall.length;
   const height = wall.height;
   const entrances = wall.entrances || [];
@@ -380,7 +381,7 @@ function createProceduralFacade(style, wall, isPrimary = false) {
   }
 
   // === ART DECO TREATMENT ===
-  if (style.arch_style === 'art_deco') {
+  if (style.arch_style === 'art_deco' && bldId === '9022e165-3bc1-48c6-a382-4cfc8d5eb9fe') {
     // Dark green painted ground floor
     const gfTop = (stories - 1) * floorH;
     ctx.fillStyle = '#2a5a1a';
@@ -1016,7 +1017,7 @@ function createBuilding(bld, mode) {
         side: THREE.DoubleSide
       });
     } else if (mode === 'textured' || mode === 'color') {
-      const facadeTex = createProceduralFacade(style, wall, wallIdx === primaryWallIdx);
+      const facadeTex = createProceduralFacade(style, wall, wallIdx === primaryWallIdx, bld.id);
       material = new THREE.MeshStandardMaterial({
         map: facadeTex, roughness: matRoughness, metalness: matMetalness,
         side: THREE.DoubleSide
