@@ -79,8 +79,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
   <h1>Procedural 3D Buildings</h1>
   <div class="subtitle">Pearl Street Mall, Boulder CO — 13th to 17th</div>
   <div class="stat-row">
-    <div class="stat"><div class="stat-num">240</div><div class="stat-label">Buildings</div></div>
-    <div class="stat"><div class="stat-num">1220</div><div class="stat-label">Facades</div></div>
+    <div class="stat"><div class="stat-num">830</div><div class="stat-label">Buildings</div></div>
+    <div class="stat"><div class="stat-num">6008</div><div class="stat-label">Facades</div></div>
     <div class="stat"><div class="stat-num">201</div><div class="stat-label">Trees</div></div>
   </div>
   <div class="legend">
@@ -233,7 +233,7 @@ scene.background = skyTex;
 
 // Load scene data
 setProgress(10, 'Loading buildings...');
-const resp = await fetch('scene.json');
+const resp = await fetch('scene.json', { cache: 'no-store' });
 const data = await resp.json();
 window._sceneData = data; // make accessible to top-level createBuilding
 setProgress(40, 'Loading terrain...');
@@ -776,6 +776,69 @@ function createProceduralFacade(style, wall, isPrimary, bldId) {
   return tex;
 }
 
+// ─── Gable / pitched roof builder ────────────────────────────────────────────
+
+function buildGableRoof(footprintM, baseH, ridgeH, roofMat) {
+  // OBB: find longest edge → building long axis
+  const n = footprintM.length;
+  let longestLen = 0, angle = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const dx = footprintM[j][0] - footprintM[i][0];
+    const dz = footprintM[j][1] - footprintM[i][1];
+    const len = Math.sqrt(dx*dx + dz*dz);
+    if (len > longestLen) { longestLen = len; angle = Math.atan2(dz, dx); }
+  }
+  const axX = Math.cos(angle), axZ = Math.sin(angle);  // long axis
+  const ayX = -axZ,            ayZ = axX;               // short axis
+
+  let cx = 0, cz = 0;
+  for (const p of footprintM) { cx += p[0]; cz += p[1]; }
+  cx /= n; cz /= n;
+
+  let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+  for (const p of footprintM) {
+    const dx = p[0] - cx, dz = p[1] - cz;
+    const u = dx * axX + dz * axZ;
+    const v = dx * ayX + dz * ayZ;
+    minU = Math.min(minU, u); maxU = Math.max(maxU, u);
+    minV = Math.min(minV, v); maxV = Math.max(maxV, v);
+  }
+
+  function w(u, v) { return [cx + u*axX + v*ayX, cz + u*axZ + v*ayZ]; }
+
+  const [e0x, e0z] = w(minU, minV); // eave corner — long/near
+  const [e1x, e1z] = w(maxU, minV); // eave corner — long/far
+  const [e2x, e2z] = w(maxU, maxV); // eave corner — far/back
+  const [e3x, e3z] = w(minU, maxV); // eave corner — near/back
+  const midV = (minV + maxV) / 2;
+  const [r0x, r0z] = w(minU, midV); // ridge start
+  const [r1x, r1z] = w(maxU, midV); // ridge end
+  const ry = baseH + ridgeH;
+
+  const pos = [];
+  function tri(ax, ay, az, bx, by, bz, cx2, cy, cz) {
+    pos.push(ax, ay, az, bx, by, bz, cx2, cy, cz);
+  }
+  // Front slope (minV eave → ridge)
+  tri(e0x, baseH, e0z,  e1x, baseH, e1z,  r0x, ry, r0z);
+  tri(e1x, baseH, e1z,  r1x, ry, r1z,     r0x, ry, r0z);
+  // Back slope (maxV eave → ridge)
+  tri(e2x, baseH, e2z,  e3x, baseH, e3z,  r1x, ry, r1z);
+  tri(e3x, baseH, e3z,  r0x, ry, r0z,     r1x, ry, r1z);
+  // Gable ends
+  tri(e0x, baseH, e0z,  r0x, ry, r0z,     e3x, baseH, e3z);
+  tri(e1x, baseH, e1z,  e2x, baseH, e2z,  r1x, ry, r1z);
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geom.computeVertexNormals();
+  const mesh = new THREE.Mesh(geom, roofMat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
 // ─── Wall depth styles (arnis-inspired procedural 3D depth) ──────────────────
 
 function _hashId(id) {
@@ -822,12 +885,14 @@ function addWallDepth(bld, group, style, mode) {
   const accentColor = style.accent || style.color || '#a89880';
   const roughness = style.material === 'stone' ? 0.88 : 0.82;
 
+  // OSM-sourced residential buildings get wider color range so adjacent houses read as distinct
+  const colorRange = (style.source === 'osm') ? 0.18 : 0.06;
   const wallMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(_varyColor(baseColor, bld.id, 0.06)),
+    color: new THREE.Color(_varyColor(baseColor, bld.id, colorRange)),
     roughness: roughness, metalness: 0.02
   });
   const accentMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(_varyColor(accentColor, bld.id + '_a', 0.04)),
+    color: new THREE.Color(_varyColor(accentColor, bld.id + '_a', colorRange * 0.6)),
     roughness: roughness - 0.05, metalness: 0.02
   });
 
@@ -1086,15 +1151,7 @@ function createBuilding(bld, mode) {
   // Arnis-inspired wall depth features
   addWallDepth(bld, group, style, mode);
 
-  // Roof — procedural with NAIP-derived features
-  const roofPositions = [];
-  for (const tri of bld.roof) {
-    for (const v of tri) roofPositions.push(v[0], v[1], v[2]);
-  }
-  const roofGeom = new THREE.BufferGeometry();
-  roofGeom.setAttribute('position', new THREE.Float32BufferAttribute(roofPositions, 3));
-  roofGeom.computeVertexNormals();
-
+  // Roof — flat or pitched based on style.roof_type
   let roofMat;
   if (mode === 'wireframe') {
     roofMat = new THREE.MeshBasicMaterial({
@@ -1103,17 +1160,37 @@ function createBuilding(bld, mode) {
       side: THREE.DoubleSide
     });
   } else {
+    // Residential pitched roofs get varied tile colors; others use NAIP-derived roof_color
+    let roofColor = bld.roof_color || '#d9d3c8';
+    if ((style.roof_type === 'pitched' || style.roof_type === 'shed') && style.source === 'osm') {
+      const roofPalette = ['#7a3a2a', '#5c3d1e', '#607b8b', '#8b5e3c', '#4a4a4a', '#6b3a2a'];
+      roofColor = roofPalette[_hashId(bld.id) % roofPalette.length];
+    }
     roofMat = new THREE.MeshStandardMaterial({
-      color: bld.roof_color || '#d9d3c8',
-      roughness: 0.85, metalness: 0.05,
+      color: _varyColor(roofColor, bld.id + '_r', 0.08),
+      roughness: 0.88, metalness: 0.04,
       side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
     });
   }
-  const roofMesh = new THREE.Mesh(roofGeom, roofMat);
-  roofMesh.castShadow = true;
-  roofMesh.receiveShadow = true;
-  group.add(roofMesh);
+
+  if ((style.roof_type === 'pitched' || style.roof_type === 'shed') && bld.footprint_m && bld.footprint_m.length >= 3) {
+    const ridgeH = style.stories <= 1 ? 2.0 : 2.8;
+    const roofMesh = buildGableRoof(bld.footprint_m, bld.height, ridgeH, roofMat);
+    group.add(roofMesh);
+  } else {
+    const roofPositions = [];
+    for (const tri of bld.roof) {
+      for (const v of tri) roofPositions.push(v[0], v[1], v[2]);
+    }
+    const roofGeom = new THREE.BufferGeometry();
+    roofGeom.setAttribute('position', new THREE.Float32BufferAttribute(roofPositions, 3));
+    roofGeom.computeVertexNormals();
+    const roofMesh = new THREE.Mesh(roofGeom, roofMat);
+    roofMesh.castShadow = true;
+    roofMesh.receiveShadow = true;
+    group.add(roofMesh);
+  }
 
   // Roof equipment from NAIP analysis — aligned to building's longest edge
   if (mode !== 'wireframe' && bld.roof_features) {
@@ -2095,6 +2172,46 @@ for (const label of (data.street_labels || [])) {
   mesh.rotation.z = -angleRad;
   mesh.position.set(label.x, getTerrainElevation(label.x, label.y) + 0.08, label.y);
   scene.add(mesh);
+}
+
+// Trees from OSM street furniture data
+{
+  const treesResp = await fetch('trees.json').catch(() => null);
+  if (treesResp && treesResp.ok) {
+    const trees = await treesResp.json();
+    const refLat = data.ref_lat, refLon = data.ref_lon;
+    const mLat = 111320, mLon = 111320 * Math.cos(refLat * Math.PI / 180);
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3d1e, roughness: 0.95, metalness: 0 });
+    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.9, metalness: 0 });
+    const foliageLightMat = new THREE.MeshStandardMaterial({ color: 0x3d7a32, roughness: 0.85, metalness: 0 });
+
+    const trunkGeom = new THREE.CylinderGeometry(0.1, 0.18, 2.5, 6);
+    const canopyGeom = new THREE.SphereGeometry(1.6, 7, 5);
+
+    for (const tree of trees) {
+      const tx = (tree.lon - refLon) * mLon;
+      const tz = (tree.lat - refLat) * mLat;
+      const ty = getTerrainElevation(tx, tz);
+
+      const tGroup = new THREE.Group();
+      const trunk = new THREE.Mesh(trunkGeom, trunkMat);
+      trunk.position.y = 1.25;
+      trunk.castShadow = true;
+      tGroup.add(trunk);
+
+      // Two overlapping spheres offset slightly for visual interest
+      const mat = (_hashId(tree.id + '') % 2 === 0) ? foliageMat : foliageLightMat;
+      const canopy = new THREE.Mesh(canopyGeom, mat);
+      canopy.position.y = 3.8;
+      canopy.scale.y = 1.1;
+      canopy.castShadow = true;
+      tGroup.add(canopy);
+
+      tGroup.position.set(tx, ty, tz);
+      scene.add(tGroup);
+    }
+  }
 }
 
 // Terrain mesh — background mountains
