@@ -2237,7 +2237,7 @@ terrainGeom.computeVertexNormals();
 const terrainMat = new THREE.MeshStandardMaterial({
   color: 0x8a8580, roughness: 0.95, metalness: 0,
   side: THREE.DoubleSide,
-  polygonOffset: true, polygonOffsetFactor: 10, polygonOffsetUnits: 10
+  depthWrite: false,  // never occlude roads/parks above it (log depth buffer makes polygonOffset unreliable at distance)
 });
 const terrainMesh = new THREE.Mesh(terrainGeom, terrainMat);
 terrainMesh.rotation.x = -Math.PI / 2;
