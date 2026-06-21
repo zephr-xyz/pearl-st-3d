@@ -1285,48 +1285,16 @@ function createBuilding(bld, mode) {
 
     // NAIP-derived roof profile (multi-level stepped massing)
     if (bld.roof_profile) {
-      // Tier sizing and placement: use primary wall's reference frame so the tier is
-      // correctly sized (spans facade width) and flush against the street-facing side.
-      let tierCx = cx, tierCz = cz, tierRotY = -buildingAngle;
-      let tierFacadeW = fW, tierFacadeD = fD * 0.30;
-      if (primaryWallIdx >= 0) {
-        const pw = bld.walls[primaryWallIdx];
-        if (pw && pw.bearing != null) {
-          const pRad = pw.bearing * Math.PI / 180;
-          const pNx = Math.sin(pRad), pNz = Math.cos(pRad);
-          // Wall-tangent direction (along the facade face)
-          const pTx = pNz, pTz = -pNx;
-          // Project footprint onto primary wall's frame (normal + tangent)
-          let normMin = Infinity, normMax = -Infinity;
-          let tangMin = Infinity, tangMax = -Infinity;
-          for (const p of bld.footprint_m) {
-            const dx = p[0] - cx, dz = p[1] - cz;
-            const n = dx * pNx + dz * pNz;
-            const t = dx * pTx + dz * pTz;
-            normMin = Math.min(normMin, n); normMax = Math.max(normMax, n);
-            tangMin = Math.min(tangMin, t); tangMax = Math.max(tangMax, t);
-          }
-          // Width = facade span, depth = 30% of building depth in normal direction
-          tierFacadeW = tangMax - tangMin;
-          tierFacadeD = (normMax - normMin) * 0.30;
-          // Center along facade, outer face flush with primary wall
-          const normCenter = normMax - tierFacadeD / 2;
-          const tangCenter = (tangMin + tangMax) / 2;
-          tierCx = cx + tangCenter * pTx + normCenter * pNx;
-          tierCz = cz + tangCenter * pTz + normCenter * pNz;
-          // Rotate so tier box X-axis aligns with facade tangent
-          tierRotY = -Math.atan2(pTz, pTx);
-        }
-      }
       for (const level of bld.roof_profile) {
+        const tierW = fW * (level.fraction != null ? level.fraction : 1.0);
+        const tierD = fD * (level.fraction != null ? level.fraction : 1.0);
         const tierH = level.height_add;
-        const frac = level.fraction != null ? level.fraction : 1.0;
         const tier = new THREE.Mesh(
-          new THREE.BoxGeometry(tierFacadeW * frac, tierH, tierFacadeD * frac),
+          new THREE.BoxGeometry(tierW, tierH, tierD),
           tierMat
         );
-        tier.position.set(tierCx, h + tierH / 2, tierCz);
-        tier.rotation.y = tierRotY;
+        tier.position.set(cx, h + tierH / 2, cz);
+        tier.rotation.y = -buildingAngle;
         tier.castShadow = true;
         tier.receiveShadow = true;
         group.add(tier);
@@ -1374,7 +1342,7 @@ function createBuilding(bld, mode) {
         for (let ci = 0; ci < 4; ci++) {
           const [nx, nz] = dirs[ci];
           const clock = new THREE.Mesh(ci === 0 ? clockGeom : clockGeom.clone(), clockMat);
-          clock.position.set(tierCx + nx * offset, clockY, tierCz + nz * offset);
+          clock.position.set(cx + nx * offset, clockY, cz + nz * offset);
           clock.rotation.y = Math.atan2(nx, nz);
           group.add(clock);
         }
