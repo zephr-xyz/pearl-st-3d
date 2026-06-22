@@ -1487,39 +1487,6 @@ function createBuilding(bld, mode) {
       }
     }
 
-    // Columns on facade
-    if (lf.columns && !lf.tower) {
-      const colMat = new THREE.MeshStandardMaterial({ color: '#e8e0d8', roughness: 0.6, metalness: 0.05 });
-      // Find street-facing wall
-      let bestWall = bld.walls[0];
-      for (const w of bld.walls) {
-        if (w.is_exterior && w.length > bestWall.length) bestWall = w;
-      }
-      const v = bestWall.vertices;
-      const wx0 = v[0][0], wz0 = v[0][2], wx1 = v[1][0], wz1 = v[1][2];
-      const wdx = wx1 - wx0, wdz = wz1 - wz0;
-      const wlen = Math.sqrt(wdx*wdx + wdz*wdz);
-      const wnx = -wdz / wlen, wnz = wdx / wlen;
-      // Outward normal
-      const testX = (wx0+wx1)/2 + wnx, testZ = (wz0+wz1)/2 + wnz;
-      const dTest = (testX-cx)*(testX-cx) + (testZ-cz)*(testZ-cz);
-      const dMid = ((wx0+wx1)/2-cx)*((wx0+wx1)/2-cx) + ((wz0+wz1)/2-cz)*((wz0+wz1)/2-cz);
-      const nDir = dTest > dMid ? 1 : -1;
-
-      const numCols = Math.max(2, Math.round(wlen / 4));
-      const colH = h * 0.85;
-      const colR = 0.18;
-      for (let ci = 0; ci < numCols; ci++) {
-        const t = (ci + 0.5) / numCols;
-        const px = wx0 + t * wdx + wnx * nDir * 0.4;
-        const pz = wz0 + t * wdz + wnz * nDir * 0.4;
-        const col = new THREE.Mesh(new THREE.CylinderGeometry(colR * 0.8, colR, colH, 8), colMat);
-        col.position.set(px, colH / 2, pz);
-        col.castShadow = true;
-        group.add(col);
-      }
-    }
-
     // Pediment / stepped gable
     if (lf.pediment && !lf.tower) {
       const pedMat = new THREE.MeshStandardMaterial({
