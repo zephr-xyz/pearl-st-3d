@@ -928,24 +928,14 @@ function addWallDepth(bld, group, style, mode) {
       placeBox(wallLen / 2, yCenter, wallLen, bandH, bandD, mat);
     };
 
+    // Vertical pilasters/colonnades removed — they were placed on a fixed
+    // interval independent of the window grid, so they bisected windows.
+    // Keep only the horizontal cornices and floor bands (don't cross windows).
     if (depthStyle === 'subtlePilasters') {
-      // Interior pilasters every ~4m (skip corners)
-      const count = Math.max(1, Math.round(wallLen / 4.0));
-      for (let i = 0; i <= count; i++) {
-        const tPos = (wallLen / count) * i;
-        if (tPos < 0.15 || tPos > wallLen - 0.15) continue;
-        placeBox(tPos, wallH / 2, 0.18, wallH, 0.1, wallMat);
-      }
       // Thin cornice cap
       placeBand(wallH - 0.15, 0.3, 0.12, accentMat);
 
     } else if (depthStyle === 'modernPillars') {
-      // Pilasters every ~3.2m including corners
-      const count = Math.max(1, Math.round(wallLen / 3.2));
-      for (let i = 0; i <= count; i++) {
-        const tPos = (wallLen / count) * i;
-        placeBox(tPos, wallH / 2, 0.25, wallH, 0.18, wallMat);
-      }
       // Horizontal band at each floor seam
       const stories = Math.max(1, Math.round(wallH / 3.5));
       const floorH = wallH / stories;
@@ -956,21 +946,12 @@ function addWallDepth(bld, group, style, mode) {
       placeBand(wallH - 0.25, 0.5, 0.2, accentMat);
 
     } else if (depthStyle === 'historicOrnate') {
-      // Pilasters every ~2.5m including corners
-      const count = Math.max(1, Math.round(wallLen / 2.5));
-      for (let i = 0; i <= count; i++) {
-        const tPos = (wallLen / count) * i;
-        placeBox(tPos, wallH / 2, 0.28, wallH, 0.2, wallMat);
-      }
       // Sub-cornice decorative band
       placeBand(wallH - 1.01, 0.22, 0.15, accentMat);
       // Bold cornice cap
       placeBand(wallH - 0.275, 0.55, 0.22, accentMat);
 
     } else if (depthStyle === 'institutionalBands') {
-      // Corner pilasters only
-      placeBox(0, wallH / 2, 0.4, wallH, 0.15, wallMat);
-      placeBox(wallLen, wallH / 2, 0.4, wallH, 0.15, wallMat);
       // Floor bands
       const stories = Math.max(1, Math.round(wallH / 3.5));
       const floorH = wallH / stories;
