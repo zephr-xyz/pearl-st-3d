@@ -380,8 +380,8 @@ function createProceduralFacade(style, wall, isPrimary, bldId) {
     ctx.globalAlpha = 1.0;
   }
 
-  // === ART DECO TREATMENT ===
-  if (style.arch_style === 'art_deco' && bldId === '9022e165-3bc1-48c6-a382-4cfc8d5eb9fe') {
+  // === ART DECO TREATMENT === (Boulder Theater mural — front facade only)
+  if (style.arch_style === 'art_deco' && bldId === '9022e165-3bc1-48c6-a382-4cfc8d5eb9fe' && isPrimary) {
     // Dark green painted ground floor
     const gfTop = (stories - 1) * floorH;
     ctx.fillStyle = '#2a5a1a';
