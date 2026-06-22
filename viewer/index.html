@@ -1701,11 +1701,83 @@ function createBuilding(bld, mode) {
   return group;
 }
 
+// OSM-sourced buildings rendered as merged vertex-colored geometry (3 draw calls total)
+let osmBuildingMeshes = [];
+function renderOsmBuildings() {
+  for (const m of osmBuildingMeshes) scene.remove(m);
+  osmBuildingMeshes = [];
+
+  const wallPos = [], wallCol = [];
+  const flatRoofPos = [], flatRoofCol = [];
+  const pitchedPos = [], pitchedCol = [];
+
+  for (const bld of data.buildings) {
+    if (bld.style?.source !== 'osm') continue;
+    const style = bld.style || {};
+    const terrainY = getTerrainElevation(bld.centroid_m[0], bld.centroid_m[1]);
+    const wc = new THREE.Color(_varyColor(style.color || '#c8bca8', bld.id, 0.18));
+    const topY = terrainY + bld.height;
+
+    const fp0 = bld.footprint_m;
+    if (!fp0 || fp0.length < 3) continue;
+
+    // Extrude walls from footprint edges
+    for (let i = 0; i < fp0.length; i++) {
+      const a = fp0[i], b = fp0[(i + 1) % fp0.length];
+      const x0 = a[0], z0 = a[1], x1 = b[0], z1 = b[1];
+      const bot = terrainY, top = terrainY + bld.height;
+      wallPos.push(x0, bot, z0, x1, bot, z1, x1, top, z1,
+                   x0, bot, z0, x1, top, z1, x0, top, z0);
+      for (let v = 0; v < 6; v++) wallCol.push(wc.r, wc.g, wc.b);
+    }
+
+    const isPitched = style.roof_type === 'pitched' || style.roof_type === 'shed';
+    if (isPitched) {
+      const ridgeH = (style.stories || 1) <= 1 ? 2.0 : 2.8;
+      const dummyMat = new THREE.MeshStandardMaterial();
+      const rm = buildGableRoof(fp0, bld.height, ridgeH, dummyMat);
+      const pa = rm.geometry.attributes.position.array;
+      const rc = new THREE.Color(style.color ? _varyColor(style.color, bld.id + '_r', 0.1) : '#8b5e3c');
+      for (let i = 0; i < pa.length; i += 3) {
+        pitchedPos.push(pa[i], pa[i+1] + terrainY, pa[i+2]);
+        pitchedCol.push(rc.r, rc.g, rc.b);
+      }
+      rm.geometry.dispose(); dummyMat.dispose();
+    } else {
+      const rc = new THREE.Color('#ccc6bb');
+      for (let i = 1; i < fp0.length - 1; i++) {
+        flatRoofPos.push(fp0[0][0], topY, fp0[0][1], fp0[i][0], topY, fp0[i][1], fp0[i+1][0], topY, fp0[i+1][1]);
+        for (let v = 0; v < 3; v++) flatRoofCol.push(rc.r, rc.g, rc.b);
+      }
+    }
+  }
+
+  const osmWallMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.02, side: THREE.DoubleSide });
+  const osmRoofMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+
+  for (const [pos, col, mat, cast] of [
+    [wallPos, wallCol, osmWallMat, true],
+    [flatRoofPos, flatRoofCol, osmRoofMat, false],
+    [pitchedPos, pitchedCol, osmRoofMat, true],
+  ]) {
+    if (pos.length === 0) continue;
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geom.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    geom.computeVertexNormals();
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.castShadow = cast; mesh.receiveShadow = true;
+    scene.add(mesh);
+    osmBuildingMeshes.push(mesh);
+  }
+}
+
 function rebuildScene(mode) {
   for (const g of buildingGroups) scene.remove(g);
   buildingGroups = [];
 
   for (const bld of data.buildings) {
+    if (bld.style?.source === 'osm') continue; // rendered separately as merged mesh
     const mesh = createBuilding(bld, mode);
     const cx = bld.centroid_m[0], cz = bld.centroid_m[1];
     mesh.position.y = getTerrainElevation(cx, cz);
@@ -1716,6 +1788,7 @@ function rebuildScene(mode) {
 
 setProgress(75, 'Rendering facades...');
 rebuildScene('textured');
+renderOsmBuildings();
 
 // Signs — procedurally rendered from SNIP-detected text
 setProgress(85, 'Loading signs...');
@@ -1915,125 +1988,125 @@ function triangulatePoly(pts) {
   return tris;
 }
 
-for (const feat of (data.ground_features || [])) {
-  if (feat.points.length < 3) continue;
-  const isVegetation = ['park', 'recreation', 'managed', 'horticulture', 'protected', 'grass', 'forest'].includes(feat.subtype);
-  if (!isVegetation) continue;
-  const color = groundFeatureColors[feat.subtype] || 0x88aa66;
-  const roughness = groundFeatureRoughness[feat.subtype] || 0.9;
-
-  const triPts = triangulatePoly(feat.points);
-  if (triPts.length < 3) continue;
-
-  const verts = [];
-  for (const p of triPts) {
-    verts.push(p[0], getTerrainElevation(p[0], p[1]) + 0.5, p[1]);
+// Ground features — merged by subtype (7 draw calls instead of ~68)
+{
+  const gfSubtypes = ['park','recreation','managed','horticulture','protected','grass','forest'];
+  const gfBuckets = {};
+  for (const st of gfSubtypes) gfBuckets[st] = [];
+  for (const feat of (data.ground_features || [])) {
+    if (feat.points.length < 3) continue;
+    if (!gfSubtypes.includes(feat.subtype)) continue;
+    const triPts = triangulatePoly(feat.points);
+    for (const p of triPts) gfBuckets[feat.subtype].push(p[0], getTerrainElevation(p[0], p[1]) + 0.25, p[1]);
   }
-
-  const geom = new THREE.BufferGeometry();
-  geom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  geom.computeVertexNormals();
-
-  const mat = new THREE.MeshStandardMaterial({
-    color, roughness, metalness: 0, side: THREE.DoubleSide
-  });
-  const mesh = new THREE.Mesh(geom, mat);
-  mesh.receiveShadow = true;
-  scene.add(mesh);
-
-  // Add grass tufts for vegetation areas
-  if (isVegetation && feat.area > 50) {
-    const numTufts = Math.min(Math.floor(feat.area / 40), 20);
-    const xs = feat.points.map(p => p[0]), ys = feat.points.map(p => p[1]);
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
-    const tufts = [];
-    let placed = 0, attempts = 0;
-    while (placed < numTufts && attempts < numTufts * 4) {
-      attempts++;
-      const tx = minX + Math.random() * (maxX - minX);
-      const ty = minY + Math.random() * (maxY - minY);
-      tufts.push(tx, getTerrainElevation(tx, ty) + 0.15, ty);
-      placed++;
-    }
-    if (tufts.length > 0) {
-      const tGeom = new THREE.BufferGeometry();
-      tGeom.setAttribute('position', new THREE.Float32BufferAttribute(tufts, 3));
-      const tMat = new THREE.PointsMaterial({ color: 0x4a9a3a, size: 0.5, sizeAttenuation: true });
-      const tPoints = new THREE.Points(tGeom, tMat);
-      scene.add(tPoints);
-    }
+  for (const st of gfSubtypes) {
+    const verts = gfBuckets[st];
+    if (verts.length === 0) continue;
+    const color = groundFeatureColors[st] || 0x88aa66;
+    const roughness = groundFeatureRoughness[st] || 0.9;
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    geom.computeVertexNormals();
+    const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, side: THREE.DoubleSide }));
+    mesh.receiveShadow = true;
+    scene.add(mesh);
   }
 }
 
-// Roads — rendered as flat quads
-// Mapbox Streets — white roads, warm-toned pedestrian areas
-const roadColors = { tertiary: 0x404040, residential: 0x484848, primary: 0x383838, footway: 0x999490, pedestrian: 0x8b3a2a, service: 0x505050 };
-for (const road of (data.roads || [])) {
-  if (road.points.length < 2) continue;
-  const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'pedestrian' ? 6 : road.class === 'footway' ? 2 : 2.5) / 2;
-  const color = roadColors[road.class] || 0x888888;
-  const y = 0.5;
+// Roads — single merged vertex-colored mesh (1 draw call instead of ~1,147)
+{
+  const roadHalfW = { tertiary: 2.5, residential: 2, primary: 3, pedestrian: 3, footway: 1, service: 1.25 };
+  const roadRGB = {
+    tertiary:   new THREE.Color(0x404040), residential: new THREE.Color(0x484848),
+    primary:    new THREE.Color(0x383838), footway:     new THREE.Color(0x999490),
+    pedestrian: new THREE.Color(0x8b3a2a), service:    new THREE.Color(0x505050),
+  };
+  const defRC = new THREE.Color(0x888888);
+  const rVerts = [], rCols = [];
+  for (const road of (data.roads || [])) {
+    if (road.points.length < 2) continue;
+    const hw = roadHalfW[road.class] ?? 1.25;
+    const rc = roadRGB[road.class] ?? defRC;
+    for (let i = 0; i < road.points.length - 1; i++) {
+      const [x0, z0] = road.points[i], [x1, z1] = road.points[i + 1];
+      const dx = x1 - x0, dz = z1 - z0, len = Math.sqrt(dx*dx + dz*dz);
+      if (len < 0.3) continue;
+      const nx = -dz / len * hw, nz = dx / len * hw;
+      const y0t = getTerrainElevation(x0, z0) + 0.5;
+      const y1t = getTerrainElevation(x1, z1) + 0.5;
+      rVerts.push(x0+nx, y0t, z0+nz, x1+nx, y1t, z1+nz, x1-nx, y1t, z1-nz,
+                  x0+nx, y0t, z0+nz, x1-nx, y1t, z1-nz, x0-nx, y0t, z0-nz);
+      for (let v = 0; v < 6; v++) rCols.push(rc.r, rc.g, rc.b);
+    }
+  }
+  if (rVerts.length > 0) {
+    const rGeom = new THREE.BufferGeometry();
+    rGeom.setAttribute('position', new THREE.Float32BufferAttribute(rVerts, 3));
+    rGeom.setAttribute('color',    new THREE.Float32BufferAttribute(rCols, 3));
+    rGeom.computeVertexNormals();
+    const rMesh = new THREE.Mesh(rGeom, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }));
+    rMesh.receiveShadow = true;
+    scene.add(rMesh);
+  }
+}
 
-  const verts = [];
-  for (let i = 0; i < road.points.length - 1; i++) {
-    const [x0, z0] = road.points[i];
-    const [x1, z1] = road.points[i + 1];
-    const dx = x1 - x0, dz = z1 - z0;
-    const len = Math.sqrt(dx*dx + dz*dz);
-    if (len < 0.3) continue;
-    const nx = -dz / len * hw, nz = dx / len * hw;
-    const y0t = getTerrainElevation(x0, z0) + y;
-    const y1t = getTerrainElevation(x1, z1) + y;
 
-    verts.push(
-      x0 + nx, y0t, z0 + nz, x1 + nx, y1t, z1 + nz, x1 - nx, y1t, z1 - nz,
-      x0 + nx, y0t, z0 + nz, x1 - nx, y1t, z1 - nz, x0 - nx, y0t, z0 - nz
+
+// Trees — InstancedMesh (7 draw calls instead of ~600)
+{
+  const trees = data.trees || [];
+  const canopyColHex = [0x7ac07a, 0x6db86d, 0x80c880, 0x5aaa5a, 0x70b870, 0x88cc88];
+  // Pre-count clusters per canopy color
+  const canopyCounts = new Array(6).fill(0);
+  for (const tree of trees) {
+    const seed = Math.abs(tree.x * 7 + tree.y * 13) | 0;
+    canopyCounts[seed % 6] += 2 + (seed % 2);
+  }
+  const trunkIM = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(1, 1, 1, 5),
+    new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 }),
+    trees.length
+  );
+  trunkIM.castShadow = true;
+  const canopyIMs = canopyColHex.map((c, i) => {
+    const im = new THREE.InstancedMesh(
+      new THREE.DodecahedronGeometry(1, 0),
+      new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, flatShading: true }),
+      canopyCounts[i]
     );
+    im.castShadow = true;
+    return im;
+  });
+  const canopyIdx = new Array(6).fill(0);
+  const dummy = new THREE.Object3D();
+  for (let t = 0; t < trees.length; t++) {
+    const tree = trees[t];
+    const seed = Math.abs(tree.x * 7 + tree.y * 13) | 0;
+    const scale = 0.7 + (seed % 10) / 15;
+    const trunkH = 2.5 * scale + (seed % 5) * 0.2;
+    const trunkR = 0.12 + (seed % 3) * 0.04;
+    const elev = getTerrainElevation(tree.x, tree.y);
+    dummy.position.set(tree.x, elev + trunkH / 2, tree.y);
+    dummy.scale.set(trunkR, trunkH, trunkR);
+    dummy.rotation.set(0, 0, 0);
+    dummy.updateMatrix();
+    trunkIM.setMatrixAt(t, dummy.matrix);
+    const ci = seed % 6;
+    const clusters = 2 + (seed % 2);
+    const baseY = elev + trunkH + 1.2 * scale;
+    for (let c = 0; c < clusters; c++) {
+      const cr = (1.2 + (c % 2) * 0.5) * scale;
+      const angle = (c / clusters) * Math.PI * 2 + seed;
+      dummy.position.set(tree.x + Math.cos(angle) * 0.6 * scale, baseY + (c < 2 ? 0.8 : 0) * scale, tree.y + Math.sin(angle) * 0.6 * scale);
+      dummy.scale.set(cr, cr, cr);
+      dummy.rotation.set(seed + c, seed * 0.7 + c, 0);
+      dummy.updateMatrix();
+      canopyIMs[ci].setMatrixAt(canopyIdx[ci]++, dummy.matrix);
+    }
   }
-  if (verts.length === 0) continue;
-  const rGeom = new THREE.BufferGeometry();
-  rGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  rGeom.computeVertexNormals();
-  const rMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 });
-  const rMesh = new THREE.Mesh(rGeom, rMat);
-  rMesh.receiveShadow = true;
-  scene.add(rMesh);
-}
-
-
-
-// Trees — varied deciduous with multi-cluster canopy
-const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 });
-const canopyColors = [0x7ac07a, 0x6db86d, 0x80c880, 0x5aaa5a, 0x70b870, 0x88cc88];
-const canopyMats = canopyColors.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, flatShading: true }));
-for (const tree of (data.trees || [])) {
-  const seed = Math.abs(tree.x * 7 + tree.y * 13) | 0;
-  const scale = 0.7 + (seed % 10) / 15;
-  const trunkH = 2.5 * scale + (seed % 5) * 0.2;
-  const trunkR = 0.12 + (seed % 3) * 0.04;
-
-  const treeElev = getTerrainElevation(tree.x, tree.y);
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.7, trunkR, trunkH, 5), trunkMat);
-  trunk.position.set(tree.x, treeElev + trunkH / 2, tree.y);
-  trunk.castShadow = true;
-  scene.add(trunk);
-
-  const cMat = canopyMats[seed % canopyColors.length];
-  const clusters = 2 + (seed % 2);
-  const baseY = treeElev + trunkH + 1.2 * scale;
-  for (let c = 0; c < clusters; c++) {
-    const cr = (1.2 + (c % 2) * 0.5) * scale;
-    const angle = (c / clusters) * Math.PI * 2 + seed;
-    const offX = Math.cos(angle) * 0.6 * scale;
-    const offZ = Math.sin(angle) * 0.6 * scale;
-    const offY = (c < 2 ? 0.8 : 0) * scale;
-    const cluster = new THREE.Mesh(new THREE.DodecahedronGeometry(cr, 0), cMat);
-    cluster.position.set(tree.x + offX, baseY + offY, tree.y + offZ);
-    cluster.rotation.set(seed + c, seed * 0.7 + c, 0);
-    cluster.castShadow = true;
-    scene.add(cluster);
-  }
+  trunkIM.instanceMatrix.needsUpdate = true;
+  scene.add(trunkIM);
+  for (const im of canopyIMs) { im.instanceMatrix.needsUpdate = true; scene.add(im); }
 }
 
 // Benches — seat + backrest + metal frame
@@ -2105,6 +2178,7 @@ for (const rack of (data.bike_racks || [])) {
 const lampPoleMat = new THREE.MeshStandardMaterial({ color: 0x5a5a5a, roughness: 0.4, metalness: 0.6 });
 const lampGlowMat = new THREE.MeshStandardMaterial({ color: 0xfff8e0, emissive: 0xfff0c0, emissiveIntensity: 0.3, roughness: 0.2 });
 for (const road of (data.roads || [])) {
+  if (road.osm_id) continue; // skip Overpass-sourced roads (only lamp Pearl St core)
   if (road.class !== 'tertiary' && road.class !== 'residential' && road.class !== 'primary') continue;
   if (road.points.length < 2) continue;
   let accum = 20;
@@ -2223,6 +2297,7 @@ const terrainGeom = new THREE.PlaneGeometry(
 const posAttr = terrainGeom.attributes.position;
 // Reverse row order: PlaneGeometry row 0 maps to -Z after rotation,
 // but data row 0 is north (should be +Z). Flip rows so mesh matches world.
+const terrainColorArr = new Float32Array(posAttr.count * 3);
 for (let i = 0; i < posAttr.count; i++) {
   const meshRow = Math.floor(i / tW);
   const meshCol = i % tW;
@@ -2230,12 +2305,18 @@ for (let i = 0; i < posAttr.count; i++) {
   const dataIdx = dataRow * tW + meshCol;
   const elev = terrain.elevations[dataIdx] - baseElev;
   posAttr.setZ(i, elev);
+  // NAIP-derived vertex color (uint8 → float)
+  const ci = dataIdx * 3;
+  terrainColorArr[i * 3]     = terrain.colors[ci]     / 255;
+  terrainColorArr[i * 3 + 1] = terrain.colors[ci + 1] / 255;
+  terrainColorArr[i * 3 + 2] = terrain.colors[ci + 2] / 255;
 }
 posAttr.needsUpdate = true;
+terrainGeom.setAttribute('color', new THREE.Float32BufferAttribute(terrainColorArr, 3));
 terrainGeom.computeVertexNormals();
 
 const terrainMat = new THREE.MeshStandardMaterial({
-  color: 0x8a8580, roughness: 0.95, metalness: 0,
+  vertexColors: true, roughness: 0.92, metalness: 0,
   side: THREE.DoubleSide,
   polygonOffset: true, polygonOffsetFactor: 10, polygonOffsetUnits: 10
 });
@@ -2245,6 +2326,20 @@ terrainMesh.renderOrder = -1;
 terrainMesh.position.set(terrainCenterX, -0.1, terrainCenterZ);
 terrainMesh.receiveShadow = true;
 scene.add(terrainMesh);
+
+// NAIP aerial texture overlay — Pearl St core area (852m × 445m)
+{
+  const naipTex = new THREE.TextureLoader().load('naip_expanded.png');
+  naipTex.colorSpace = THREE.SRGBColorSpace;
+  const naipPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(852.5, 445.3),
+    new THREE.MeshStandardMaterial({ map: naipTex, roughness: 0.9, metalness: 0 })
+  );
+  naipPlane.rotation.x = -Math.PI / 2;
+  naipPlane.position.set(-29.4, 0.3, -24.7); // scene-coord center, 0.3m above terrain base
+  naipPlane.receiveShadow = true;
+  scene.add(naipPlane);
+}
 
 // Mode buttons
 function setMode(mode) {
