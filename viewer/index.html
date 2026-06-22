@@ -1669,82 +1669,11 @@ function createBuilding(bld, mode) {
 }
 
 // OSM-sourced buildings rendered as merged vertex-colored geometry (3 draw calls total)
-let osmBuildingMeshes = [];
-function renderOsmBuildings() {
-  for (const m of osmBuildingMeshes) scene.remove(m);
-  osmBuildingMeshes = [];
-
-  const wallPos = [], wallCol = [];
-  const flatRoofPos = [], flatRoofCol = [];
-  const pitchedPos = [], pitchedCol = [];
-
-  for (const bld of data.buildings) {
-    if (bld.style?.source !== 'osm') continue;
-    const style = bld.style || {};
-    const terrainY = getTerrainElevation(bld.centroid_m[0], bld.centroid_m[1]);
-    const wc = new THREE.Color(_varyColor(style.color || '#c8bca8', bld.id, 0.18));
-    const topY = terrainY + bld.height;
-
-    const fp0 = bld.footprint_m;
-    if (!fp0 || fp0.length < 3) continue;
-
-    // Extrude walls from footprint edges
-    for (let i = 0; i < fp0.length; i++) {
-      const a = fp0[i], b = fp0[(i + 1) % fp0.length];
-      const x0 = a[0], z0 = a[1], x1 = b[0], z1 = b[1];
-      const bot = terrainY, top = terrainY + bld.height;
-      wallPos.push(x0, bot, z0, x1, bot, z1, x1, top, z1,
-                   x0, bot, z0, x1, top, z1, x0, top, z0);
-      for (let v = 0; v < 6; v++) wallCol.push(wc.r, wc.g, wc.b);
-    }
-
-    const isPitched = style.roof_type === 'pitched' || style.roof_type === 'shed';
-    if (isPitched) {
-      const ridgeH = (style.stories || 1) <= 1 ? 2.0 : 2.8;
-      const dummyMat = new THREE.MeshStandardMaterial();
-      const rm = buildGableRoof(fp0, bld.height, ridgeH, dummyMat);
-      const pa = rm.geometry.attributes.position.array;
-      const rc = new THREE.Color(style.color ? _varyColor(style.color, bld.id + '_r', 0.1) : '#8b5e3c');
-      for (let i = 0; i < pa.length; i += 3) {
-        pitchedPos.push(pa[i], pa[i+1] + terrainY, pa[i+2]);
-        pitchedCol.push(rc.r, rc.g, rc.b);
-      }
-      rm.geometry.dispose(); dummyMat.dispose();
-    } else {
-      const rc = new THREE.Color('#ccc6bb');
-      for (let i = 1; i < fp0.length - 1; i++) {
-        flatRoofPos.push(fp0[0][0], topY, fp0[0][1], fp0[i][0], topY, fp0[i][1], fp0[i+1][0], topY, fp0[i+1][1]);
-        for (let v = 0; v < 3; v++) flatRoofCol.push(rc.r, rc.g, rc.b);
-      }
-    }
-  }
-
-  const osmWallMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.02, side: THREE.DoubleSide });
-  const osmRoofMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
-
-  for (const [pos, col, mat, cast] of [
-    [wallPos, wallCol, osmWallMat, true],
-    [flatRoofPos, flatRoofCol, osmRoofMat, false],
-    [pitchedPos, pitchedCol, osmRoofMat, true],
-  ]) {
-    if (pos.length === 0) continue;
-    const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geom.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    geom.computeVertexNormals();
-    const mesh = new THREE.Mesh(geom, mat);
-    mesh.castShadow = cast; mesh.receiveShadow = true;
-    scene.add(mesh);
-    osmBuildingMeshes.push(mesh);
-  }
-}
-
 function rebuildScene(mode) {
   for (const g of buildingGroups) scene.remove(g);
   buildingGroups = [];
 
   for (const bld of data.buildings) {
-    if (bld.style?.source === 'osm') continue; // rendered separately as merged mesh
     const mesh = createBuilding(bld, mode);
     const cx = bld.centroid_m[0], cz = bld.centroid_m[1];
     mesh.position.y = getTerrainElevation(cx, cz);
@@ -1755,7 +1684,6 @@ function rebuildScene(mode) {
 
 setProgress(75, 'Rendering facades...');
 rebuildScene('textured');
-renderOsmBuildings();
 
 // Signs — procedurally rendered from SNIP-detected text
 setProgress(85, 'Loading signs...');
