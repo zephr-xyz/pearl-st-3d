@@ -148,6 +148,43 @@ def extract_stories(desc, building_height):
     return 2
 
 
+def _parse_horizontal_position(desc_lower, subject_patterns):
+    """Extract a [0,1] horizontal position for a facade feature from freeform text.
+
+    subject_patterns: list of regex strings that match the feature name
+    (e.g. ["entrance", "door", "entry"] or ["marquee", "canopy", "awning"]).
+
+    Returns a float in [0, 1] (left=0, center=0.5, right=1), or None if not found.
+    Position words recognised:
+        far left / leftmost         → 0.10
+        left third / left side      → 0.25
+        center-left / left of center→ 0.35
+        center / central / middle   → 0.50
+        center-right / right of center → 0.65
+        right third / right side    → 0.75
+        far right / rightmost       → 0.90
+    """
+    subj = "(?:" + "|".join(subject_patterns) + ")"
+    # Ordered from most specific to least; first match wins.
+    PATTERNS = [
+        (r"far (?:left|leftmost)|leftmost",                            0.10),
+        (r"left third|left.{0,10}third|left side|left.{0,10}portion", 0.25),
+        (r"center.{0,6}left|left.{0,6}of.{0,6}center",                0.35),
+        (r"center|central|middle|centered",                            0.50),
+        (r"center.{0,6}right|right.{0,6}of.{0,6}center",              0.65),
+        (r"right third|right.{0,10}third|right side|right.{0,10}portion", 0.75),
+        (r"far (?:right|rightmost)|rightmost",                         0.90),
+        # Fallback: bare left/right within 8 words of the subject
+        (r"left",                                                       0.25),
+        (r"right",                                                      0.75),
+    ]
+    for pat, val in PATTERNS:
+        # Match: subject … position word, or position word … subject (within ~60 chars)
+        if re.search(rf"{subj}.{{0,60}}{pat}|{pat}.{{0,60}}{subj}", desc_lower):
+            return val
+    return None
+
+
 def extract_entrance_info(desc):
     """Extract entrance details from description."""
     desc_lower = desc.lower()
@@ -165,54 +202,84 @@ def extract_entrance_info(desc):
     elif "glass door" in desc_lower:
         info["style"] = "glass"
 
-    # Position hints
-    if re.search(r"entrance.*left|left.*entrance|door.*left|left.*door", desc_lower):
-        info["position"] = 0.3
-    elif re.search(r"entrance.*right|right.*entrance|door.*right|right.*door", desc_lower):
-        info["position"] = 0.7
-    elif re.search(r"entrance.*center|central.*entrance|center.*door", desc_lower):
-        info["position"] = 0.5
+    # Position — use the shared helper for finer-grained resolution
+    pos = _parse_horizontal_position(desc_lower, ["entrance", "door", "entry"])
+    if pos is not None:
+        info["position"] = pos
 
     return info
 
 
+def extract_marquee_position(desc):
+    """Return [0,1] horizontal position of the marquee/canopy on the facade, or None."""
+    if not re.search(r"marquee|canopy|awning|sign", desc.lower()):
+        return None
+    return _parse_horizontal_position(desc.lower(), ["marquee", "canopy", "awning", "sign"])
+
+
 def extract_accent_color(desc):
-    """Extract accent/trim color from description."""
-    desc_lower = desc.lower()
-    patterns = {
-        "#ffffff": [r"white.*trim", r"white.*frame", r"white.*cornice"],
-        "#1a237e": [r"blue.*trim", r"navy.*frame", r"blue.*awning"],
-        "#2a5a2a": [r"green.*awning", r"green.*trim"],
-        "#cc2222": [r"red.*awning", r"red.*trim", r"red.*door"],
-        "#ccaa00": [r"gold.*trim", r"gold.*accent", r"brass"],
-        "#4a4a4a": [r"black.*metal", r"dark.*metal", r"iron"],
-        "#808080": [r"gray.*trim", r"grey.*frame", r"silver"],
-    }
-    for hex_color, pats in patterns.items():
-        for pat in pats:
-            if re.search(pat, desc_lower):
-                return hex_color
-    return "#d4c5a9"
+    """Always return None — trim color defaults to facade color in the viewer.
+    VLM descriptions are not reliable enough for trim extraction: "white-framed windows"
+    means window glass contrast, not architectural trim; "red awning" bleeds into frames.
+    Use MANUAL_OVERRIDES in enhance_landmarks.py for explicit exceptions."""
+    return None
+
+
+_AWNING_COLORS = [
+    ("yellow",     "#ccaa00"),
+    ("gold",       "#ccaa00"),
+    ("dark brown", "#3a1a0a"),
+    ("dark metal", "#333333"),
+    ("dark grey",  "#333333"),
+    ("dark gray",  "#333333"),
+    ("dark blue",  "#1a237e"),
+    ("brown",      "#5c3a1a"),
+    ("grey",       "#555555"),
+    ("gray",       "#555555"),
+    ("teal",       "#1a7a6a"),
+    ("sage",       "#5a7a5a"),
+    ("purple",     "#6a2a7a"),
+    ("maroon",     "#6b1a1a"),
+    ("burgundy",   "#6b1a1a"),
+    ("navy",       "#1a237e"),
+    ("blue",       "#1a3a6a"),
+    ("green",      "#2a6a2a"),
+    ("red",        "#cc2222"),
+    ("black",      "#2a2a2a"),
+    ("white",      "#e0e0e0"),
+    ("cream",      "#d4c8a0"),
+    ("orange",     "#cc6622"),
+    ("dark",       "#333333"),
+]
+_AWNING_PROX = 50  # max chars between color word and awning/canopy
 
 
 def extract_awning(desc):
     """Extract awning info from description."""
-    desc_lower = desc.lower()
-    if "awning" not in desc_lower and "canopy" not in desc_lower:
+    dl = desc.lower()
+    if "awning" not in dl and "canopy" not in dl:
         return None
 
-    awning = {"style": "flat", "color": "#2a5a2a"}
+    awning = {"style": "flat", "color": "#3a3a3a"}
 
-    # Color
-    awning_colors = {
-        "red": "#cc2222", "green": "#2a5a2a", "blue": "#1a3a6a",
-        "black": "#2a2a2a", "white": "#e0e0e0", "striped": "#cc2222",
-        "navy": "#1a237e", "burgundy": "#6b1a1a",
-    }
-    for word, color in awning_colors.items():
-        if re.search(rf"{word}.*(?:awning|canopy)", desc_lower):
+    # Stripe style: only when "striped" appears near awning/canopy (not elsewhere on facade)
+    stripe_pat = (rf"(?:stripe|striped)[^.]{{0,{_AWNING_PROX}}}(?:awning|canopy)"
+                  rf"|(?:awning|canopy)[^.]{{0,{_AWNING_PROX}}}(?:stripe|striped)")
+    if re.search(stripe_pat, dl):
+        awning["style"] = "striped"
+    elif re.search(r"\bslop|angled|slanted", dl):
+        awning["style"] = "slope"
+
+    # Color — [^.] blocks cross-sentence matches; most-specific phrases first
+    for word, color in _AWNING_COLORS:
+        pat = (rf"(?:{re.escape(word)}[^.]{{0,{_AWNING_PROX}}}(?:awning|canopy)"
+               rf"|(?:awning|canopy)[^.]{{0,{_AWNING_PROX}}}{re.escape(word)})")
+        if re.search(pat, dl):
             awning["color"] = color
             break
+
+    if awning["style"] == "striped":
+        awning["stripe_color"] = "rgba(255,255,255,0.45)"
 
     return awning
 
@@ -243,7 +310,7 @@ def parse_visual_description(desc, building_height=None):
     if not desc:
         return None
 
-    return {
+    params = {
         "material": extract_material(desc),
         "color": extract_color(desc),
         "accent": extract_accent_color(desc),
@@ -253,6 +320,11 @@ def parse_visual_description(desc, building_height=None):
         "awning": extract_awning(desc),
         "details": extract_architectural_details(desc),
     }
+    # Store marquee position when the description mentions one
+    marq_pos = extract_marquee_position(desc)
+    if marq_pos is not None:
+        params["marquee_position"] = marq_pos
+    return params
 
 
 # --- Window count validation from Mapillary image ---

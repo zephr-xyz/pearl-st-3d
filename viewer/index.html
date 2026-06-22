@@ -79,8 +79,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
   <h1>Procedural 3D Buildings</h1>
   <div class="subtitle">Pearl Street Mall, Boulder CO — 13th to 17th</div>
   <div class="stat-row">
-    <div class="stat"><div class="stat-num">240</div><div class="stat-label">Buildings</div></div>
-    <div class="stat"><div class="stat-num">1220</div><div class="stat-label">Facades</div></div>
+    <div class="stat"><div class="stat-num">830</div><div class="stat-label">Buildings</div></div>
+    <div class="stat"><div class="stat-num">6008</div><div class="stat-label">Facades</div></div>
     <div class="stat"><div class="stat-num">201</div><div class="stat-label">Trees</div></div>
   </div>
   <div class="legend">
@@ -125,6 +125,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const canvas = document.getElementById('canvas');
 const tooltip = document.getElementById('tooltip');
 const textureLoader = new THREE.TextureLoader();
+textureLoader.crossOrigin = 'anonymous';
 
 const loadingOverlay = document.getElementById('loading-overlay');
 const loadingFill = document.getElementById('loading-bar-fill');
@@ -232,8 +233,9 @@ scene.background = skyTex;
 
 // Load scene data
 setProgress(10, 'Loading buildings...');
-const resp = await fetch('scene.json');
+const resp = await fetch('scene.json', { cache: 'no-store' });
 const data = await resp.json();
+window._sceneData = data; // make accessible to top-level createBuilding
 setProgress(40, 'Loading terrain...');
 
 // Load terrain for elevation lookup
@@ -289,7 +291,8 @@ function hexToColor(hex) {
 }
 
 // Procedural window texture
-function createProceduralFacade(style, wall) {
+function createProceduralFacade(style, wall, isPrimary, bldId) {
+  isPrimary = isPrimary || false;
   const width = wall.length;
   const height = wall.height;
   const entrances = wall.entrances || [];
@@ -303,6 +306,10 @@ function createProceduralFacade(style, wall) {
 
   const stories = style.stories || 2;
   const floorH = H / stories;
+
+  // trim: only use accent when it was explicitly described (not null/undefined).
+  // Fallback to facade color so frames and bands don't invent white stripes.
+  const trim = style.accent || style.color || '#d4c5a9';
 
   // Compute exclusion zones around entrances (used throughout)
   const pxPerMeter = W / width;
@@ -373,16 +380,66 @@ function createProceduralFacade(style, wall) {
     ctx.globalAlpha = 1.0;
   }
 
+  // === ART DECO TREATMENT ===
+  if (style.arch_style === 'art_deco' && bldId === '9022e165-3bc1-48c6-a382-4cfc8d5eb9fe') {
+    // Dark green painted ground floor
+    const gfTop = (stories - 1) * floorH;
+    ctx.fillStyle = '#2a5a1a';
+    ctx.fillRect(0, gfTop, W, H - gfTop);
+
+    // Sunburst fan — center top, spreading downward
+    const fanCX = W / 2;
+    const fanCY = H * 0.06;
+    const fanR  = H * 0.30;
+    const numRays = 14;
+    const rayColors = ['#c8a832', '#8a6030', '#2a6a50', '#c8a832', '#a87828'];
+    for (let ri = 0; ri < numRays; ri++) {
+      const a0 = (Math.PI * ri) / numRays;
+      const a1 = (Math.PI * (ri + 0.88)) / numRays;
+      ctx.beginPath();
+      ctx.moveTo(fanCX, fanCY);
+      ctx.arc(fanCX, fanCY, fanR, a0, a1);
+      ctx.closePath();
+      ctx.fillStyle = rayColors[ri % rayColors.length];
+      ctx.globalAlpha = 0.72;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Central arched window (behind fan, upper section)
+    const archW = W * 0.14;
+    const archBottom = gfTop - H * 0.04;
+    const archTop = fanCY + fanR * 0.25;
+    const archMid = archTop + (archBottom - archTop) * 0.30;
+    ctx.fillStyle = '#1a3a4a';
+    ctx.beginPath();
+    ctx.moveTo(fanCX - archW / 2, archBottom);
+    ctx.lineTo(fanCX - archW / 2, archMid);
+    ctx.arc(fanCX, archMid, archW / 2, Math.PI, 0);
+    ctx.lineTo(fanCX + archW / 2, archBottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // Vertical pilasters
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#f0ebd0';
+    const pilW2 = W * 0.022;
+    for (const px of [W * 0.12, W * 0.33, W * 0.67, W * 0.88]) {
+      ctx.fillRect(px - pilW2 / 2, H * 0.12, pilW2, gfTop - H * 0.12);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
   // === CORNICE ===
   const corniceH = Math.max(8, H * 0.035);
-  ctx.fillStyle = style.accent || '#d4c5a9';
+  ctx.fillStyle = trim;
   ctx.fillRect(0, 0, W, corniceH);
   ctx.fillStyle = 'rgba(0,0,0,0.2)';
   ctx.fillRect(0, corniceH, W, 2);
 
   // Pediment (Odd Fellows)
   if (style.pediment) {
-    ctx.fillStyle = style.accent || '#f5f0e0';
+    ctx.fillStyle = trim;
     ctx.beginPath();
     ctx.moveTo(W * 0.3, corniceH);
     ctx.lineTo(W * 0.5, corniceH - H * 0.04);
@@ -392,15 +449,24 @@ function createProceduralFacade(style, wall) {
   }
 
   // === FLOOR DIVIDERS ===
+  // Subtle shadow line — never a colored band unless accent explicitly set
   for (let f = 1; f < stories; f++) {
     const ly = f * floorH;
-    ctx.fillStyle = style.accent || '#d4c5a9';
-    ctx.fillRect(0, ly - 1, W, 3);
+    if (style.accent) {
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = trim;
+      ctx.fillRect(0, ly - 1, W, 2);
+      ctx.globalAlpha = 1.0;
+    }
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.fillRect(0, ly + 1, W, 1.5);
+    ctx.globalAlpha = 1.0;
   }
 
   // === SIGNAGE BAND (between cornice and first window row, or above ground floor) ===
   const signage = style.signage;
-  if (signage && stories >= 1) {
+  if (signage && stories >= 1 && style.arch_style !== 'art_deco') {
     const bandY = stories === 1 ? corniceH + 4 : (stories - 1) * floorH + 4;
     const bandH = floorH * 0.18;
     ctx.fillStyle = signage.band_color || '#2a2a2a';
@@ -431,22 +497,22 @@ function createProceduralFacade(style, wall) {
 
         // Arched top for romanesque
         if (style.windows === 'romanesque_arched') {
-          ctx.fillStyle = style.accent || '#f5f0e0';
+          ctx.fillStyle = trim;
           ctx.beginPath();
           ctx.arc(winCx, winTop, winW/2 + 3, Math.PI, 0);
           ctx.fill();
         }
 
         // Sill
-        ctx.fillStyle = style.accent || '#e0d8c8';
+        ctx.fillStyle = trim;
         ctx.fillRect(winCx - winW/2 - 3, winTop + winH, winW + 6, 4);
 
         // Lintel
-        ctx.fillStyle = style.accent || '#e0d8c8';
+        ctx.fillStyle = trim;
         ctx.fillRect(winCx - winW/2 - 2, winTop - 4, winW + 4, 4);
 
         // Frame
-        ctx.fillStyle = style.accent || '#f5f0e0';
+        ctx.fillStyle = trim;
         ctx.fillRect(winCx - winW/2 - 1.5, winTop, winW + 3, winH);
 
         // Glass — gradient with sky reflection
@@ -469,7 +535,7 @@ function createProceduralFacade(style, wall) {
         ctx.globalAlpha = 1.0;
 
         // Mullion (vertical divider)
-        ctx.fillStyle = style.accent || '#d0c8b8';
+        ctx.fillStyle = trim;
         ctx.fillRect(winCx - 0.8, winTop + 1, 1.6, winH - 2);
 
         // Horizontal mullion for multi-pane
@@ -583,20 +649,43 @@ function createProceduralFacade(style, wall) {
       const cx = (wi + 0.75) * spacing;
       if (inEntranceZone(cx)) continue;
 
-      ctx.fillStyle = style.accent || '#e0d8c8';
+      ctx.fillStyle = trim;
       ctx.fillRect(cx - gWinW/2 - 2, gWinTop - 2, gWinW + 4, gWinH + 4);
       const wg = ctx.createLinearGradient(cx, gWinTop, cx, gWinTop + gWinH);
       wg.addColorStop(0, '#2a4565');
       wg.addColorStop(1, '#1f3550');
       ctx.fillStyle = wg;
       ctx.fillRect(cx - gWinW/2, gWinTop, gWinW, gWinH);
-      ctx.fillStyle = style.accent || '#e0d8c8';
+      ctx.fillStyle = trim;
       ctx.fillRect(cx - 0.8, gWinTop, 1.6, gWinH);
     }
   }
 
   // === AWNING ===
   const awning = style.awning;
+
+  function drawScallopedValance(ctx, x0, x1, y, color) {
+    const span = x1 - x0;
+    const nSc = Math.max(3, Math.round(span / 14));
+    const scW = span / nSc;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let s = 0; s < nSc; s++) {
+      const scx = x0 + (s + 0.5) * scW;
+      ctx.arc(scx, y, scW / 2 * 0.88, 0, Math.PI);
+    }
+    ctx.fill();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    for (let s = 0; s < nSc; s++) {
+      const scx = x0 + (s + 0.5) * scW;
+      ctx.arc(scx, y + 1.5, scW / 2 * 0.88, 0, Math.PI);
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+  }
+
   if (awning && entrances.length > 0) {
     const awningH = gfH * 0.18;
     const awningTop = doorTop - awningH - 4;
@@ -605,39 +694,62 @@ function createProceduralFacade(style, wall) {
     for (const ent of entrances) {
       const cx = ent.t * W;
       const aw = Math.min(exclusionRadius * 1.6, W * 0.45);
+      const ax0 = cx - aw / 2, ax1 = cx + aw / 2;
 
       if (awningStyle === 'slope') {
-        // Sloped awning (like OZO's red one)
         ctx.fillStyle = awning.color;
         ctx.beginPath();
-        ctx.moveTo(cx - aw/2, awningTop);
-        ctx.lineTo(cx + aw/2, awningTop);
-        ctx.lineTo(cx + aw/2 - 4, awningTop + awningH);
-        ctx.lineTo(cx - aw/2 + 4, awningTop + awningH);
+        ctx.moveTo(ax0, awningTop);
+        ctx.lineTo(ax1, awningTop);
+        ctx.lineTo(ax1 - 4, awningTop + awningH);
+        ctx.lineTo(ax0 + 4, awningTop + awningH);
         ctx.closePath();
         ctx.fill();
-        // Shadow below
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.fillRect(cx - aw/2 + 4, awningTop + awningH, aw - 8, 3);
-        // Highlight on top edge
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.fillRect(cx - aw/2, awningTop, aw, 2);
+        ctx.fillRect(ax0, awningTop, aw, 2);
+        drawScallopedValance(ctx, ax0 + 4, ax1 - 4, awningTop + awningH, awning.color);
+      } else if (awningStyle === 'striped') {
+        ctx.fillStyle = awning.color;
+        ctx.fillRect(ax0, awningTop, aw, awningH);
+        const stripeColor = awning.stripe_color || 'rgba(255,255,255,0.45)';
+        const strW = Math.max(5, aw / 10);
+        ctx.fillStyle = stripeColor;
+        for (let sx = ax0; sx < ax1; sx += strW * 2) {
+          ctx.fillRect(sx, awningTop, strW, awningH);
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(ax0, awningTop, aw, 2);
+        drawScallopedValance(ctx, ax0, ax1, awningTop + awningH, awning.color);
       } else {
         // Flat awning
         ctx.fillStyle = awning.color;
-        ctx.fillRect(cx - aw/2, awningTop, aw, awningH);
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fillRect(cx - aw/2, awningTop + awningH - 2, aw, 3);
+        ctx.fillRect(ax0, awningTop, aw, awningH);
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillRect(ax0, awningTop, aw, 2);
+        drawScallopedValance(ctx, ax0, ax1, awningTop + awningH, awning.color);
       }
     }
   } else if (awning && entrances.length === 0) {
     // Full-width awning when no specific entrance on this wall
     const awningH = gfH * 0.15;
     const awningTop = gfTop - awningH;
-    ctx.fillStyle = awning.color;
-    ctx.fillRect(W * 0.05, awningTop, W * 0.9, awningH);
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx.fillRect(W * 0.05, awningTop + awningH - 2, W * 0.9, 3);
+    const ax0 = W * 0.05, ax1 = W * 0.95;
+    const awningStyle = awning.style || 'flat';
+    if (awningStyle === 'striped') {
+      ctx.fillStyle = awning.color;
+      ctx.fillRect(ax0, awningTop, ax1 - ax0, awningH);
+      const strW = Math.max(5, (ax1 - ax0) / 12);
+      ctx.fillStyle = awning.stripe_color || 'rgba(255,255,255,0.45)';
+      for (let sx = ax0; sx < ax1; sx += strW * 2) {
+        ctx.fillRect(sx, awningTop, strW, awningH);
+      }
+    } else {
+      ctx.fillStyle = awning.color;
+      ctx.fillRect(ax0, awningTop, ax1 - ax0, awningH);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(ax0, awningTop, ax1 - ax0, 2);
+    }
+    drawScallopedValance(ctx, ax0, ax1, awningTop + awningH, awning.color);
   }
 
   // === BASE/PLINTH ===
@@ -664,6 +776,213 @@ function createProceduralFacade(style, wall) {
   return tex;
 }
 
+// ─── Gable / pitched roof builder ────────────────────────────────────────────
+
+function buildGableRoof(footprintM, baseH, ridgeH, roofMat) {
+  // OBB: find longest edge → building long axis
+  const n = footprintM.length;
+  let longestLen = 0, angle = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const dx = footprintM[j][0] - footprintM[i][0];
+    const dz = footprintM[j][1] - footprintM[i][1];
+    const len = Math.sqrt(dx*dx + dz*dz);
+    if (len > longestLen) { longestLen = len; angle = Math.atan2(dz, dx); }
+  }
+  const axX = Math.cos(angle), axZ = Math.sin(angle);  // long axis
+  const ayX = -axZ,            ayZ = axX;               // short axis
+
+  let cx = 0, cz = 0;
+  for (const p of footprintM) { cx += p[0]; cz += p[1]; }
+  cx /= n; cz /= n;
+
+  let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+  for (const p of footprintM) {
+    const dx = p[0] - cx, dz = p[1] - cz;
+    const u = dx * axX + dz * axZ;
+    const v = dx * ayX + dz * ayZ;
+    minU = Math.min(minU, u); maxU = Math.max(maxU, u);
+    minV = Math.min(minV, v); maxV = Math.max(maxV, v);
+  }
+
+  function w(u, v) { return [cx + u*axX + v*ayX, cz + u*axZ + v*ayZ]; }
+
+  const [e0x, e0z] = w(minU, minV); // eave corner — long/near
+  const [e1x, e1z] = w(maxU, minV); // eave corner — long/far
+  const [e2x, e2z] = w(maxU, maxV); // eave corner — far/back
+  const [e3x, e3z] = w(minU, maxV); // eave corner — near/back
+  const midV = (minV + maxV) / 2;
+  const [r0x, r0z] = w(minU, midV); // ridge start
+  const [r1x, r1z] = w(maxU, midV); // ridge end
+  const ry = baseH + ridgeH;
+
+  const pos = [];
+  function tri(ax, ay, az, bx, by, bz, cx2, cy, cz) {
+    pos.push(ax, ay, az, bx, by, bz, cx2, cy, cz);
+  }
+  // Front slope (minV eave → ridge)
+  tri(e0x, baseH, e0z,  e1x, baseH, e1z,  r0x, ry, r0z);
+  tri(e1x, baseH, e1z,  r1x, ry, r1z,     r0x, ry, r0z);
+  // Back slope (maxV eave → ridge)
+  tri(e2x, baseH, e2z,  e3x, baseH, e3z,  r1x, ry, r1z);
+  tri(e3x, baseH, e3z,  r0x, ry, r0z,     r1x, ry, r1z);
+  // Gable ends
+  tri(e0x, baseH, e0z,  r0x, ry, r0z,     e3x, baseH, e3z);
+  tri(e1x, baseH, e1z,  e2x, baseH, e2z,  r1x, ry, r1z);
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geom.computeVertexNormals();
+  const mesh = new THREE.Mesh(geom, roofMat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+// ─── Wall depth styles (arnis-inspired procedural 3D depth) ──────────────────
+
+function _hashId(id) {
+  let h = 5381;
+  for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) | 0;
+  return h >>> 0;
+}
+
+function _varyColor(hex, seed, range) {
+  range = range || 0.06;
+  const h = _hashId(seed);
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const f = range * 255;
+  const clamp = function(v) { return Math.max(0, Math.min(255, Math.round(v))); };
+  return '#' + [
+    clamp(r + ((h & 0xFF) / 255 - 0.5) * f),
+    clamp(g + (((h >> 8) & 0xFF) / 255 - 0.5) * f),
+    clamp(b + (((h >> 16) & 0xFF) / 255 - 0.5) * f)
+  ].map(function(v) { return v.toString(16).padStart(2, '0'); }).join('');
+}
+
+function _buildingDepthStyle(bld) {
+  const style = bld.style || {};
+  const lf = style.landmark_features || {};
+  const mat = style.material || '';
+  const era = style.era || '';
+  const arch = style.arch_style || '';
+  const lfStyle = lf.style || '';
+  const historicArch = ['neoclassical', 'romanesque', 'richardsonian_romanesque', 'victorian', 'art_deco', 'gothic_revival'];
+  const historicEra = ['victorian', 'edwardian', 'interwar'];
+  const historicLf = ['neoclassical', 'romanesque', 'victorian', 'art_deco'];
+  if (historicArch.indexOf(arch) >= 0 || historicEra.indexOf(era) >= 0 || historicLf.indexOf(lfStyle) >= 0) return 'historicOrnate';
+  if (mat === 'stone') return 'institutionalBands';
+  if (era === 'contemporary' || style.ground_floor === 'storefront') return 'modernPillars';
+  return 'subtlePilasters';
+}
+
+function addWallDepth(bld, group, style, mode) {
+  if (mode === 'wireframe') return;
+  const depthStyle = _buildingDepthStyle(bld);
+  const baseColor = style.color || '#c8bca8';
+  const accentColor = style.accent || style.color || '#a89880';
+  const roughness = style.material === 'stone' ? 0.88 : 0.82;
+
+  // OSM-sourced residential buildings get wider color range so adjacent houses read as distinct
+  const colorRange = (style.source === 'osm') ? 0.18 : 0.06;
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(_varyColor(baseColor, bld.id, colorRange)),
+    roughness: roughness, metalness: 0.02
+  });
+  const accentMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(_varyColor(accentColor, bld.id + '_a', colorRange * 0.6)),
+    roughness: roughness - 0.05, metalness: 0.02
+  });
+
+  for (let wi = 0; wi < bld.walls.length; wi++) {
+    const wall = bld.walls[wi];
+    if (!wall.is_exterior) continue;
+    const v = wall.vertices;
+    const x0 = v[0][0], z0 = v[0][2], x1 = v[1][0], z1 = v[1][2];
+    const wallH = wall.height;
+    const dx = x1 - x0, dz = z1 - z0;
+    const wallLen = Math.sqrt(dx * dx + dz * dz);
+    if (wallLen < 1.5) continue;
+    const tx = dx / wallLen, tz = dz / wallLen;
+    const nx = -tz, nz = tx;
+    const rotY = Math.atan2(-tz, tx);
+
+    // Place a wall-aligned box: tPos along wall from (x0,z0), yCenter in world Y
+    const placeBox = function(tPos, yCenter, boxW, boxH, boxD, mat) {
+      const geo = new THREE.BoxGeometry(boxW, boxH, boxD);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        x0 + tPos * tx + nx * (boxD / 2),
+        yCenter,
+        z0 + tPos * tz + nz * (boxD / 2)
+      );
+      mesh.rotation.y = rotY;
+      mesh.castShadow = true;
+      group.add(mesh);
+    };
+
+    // Full-width horizontal band at given y center
+    const placeBand = function(yCenter, bandH, bandD, mat) {
+      placeBox(wallLen / 2, yCenter, wallLen, bandH, bandD, mat);
+    };
+
+    if (depthStyle === 'subtlePilasters') {
+      // Interior pilasters every ~4m (skip corners)
+      const count = Math.max(1, Math.round(wallLen / 4.0));
+      for (let i = 0; i <= count; i++) {
+        const tPos = (wallLen / count) * i;
+        if (tPos < 0.15 || tPos > wallLen - 0.15) continue;
+        placeBox(tPos, wallH / 2, 0.18, wallH, 0.1, wallMat);
+      }
+      // Thin cornice cap
+      placeBand(wallH - 0.15, 0.3, 0.12, accentMat);
+
+    } else if (depthStyle === 'modernPillars') {
+      // Pilasters every ~3.2m including corners
+      const count = Math.max(1, Math.round(wallLen / 3.2));
+      for (let i = 0; i <= count; i++) {
+        const tPos = (wallLen / count) * i;
+        placeBox(tPos, wallH / 2, 0.25, wallH, 0.18, wallMat);
+      }
+      // Horizontal band at each floor seam
+      const stories = Math.max(1, Math.round(wallH / 3.5));
+      const floorH = wallH / stories;
+      for (let fl = 1; fl < stories; fl++) {
+        placeBand(fl * floorH, 0.2, 0.1, accentMat);
+      }
+      // Bold cornice cap
+      placeBand(wallH - 0.25, 0.5, 0.2, accentMat);
+
+    } else if (depthStyle === 'historicOrnate') {
+      // Pilasters every ~2.5m including corners
+      const count = Math.max(1, Math.round(wallLen / 2.5));
+      for (let i = 0; i <= count; i++) {
+        const tPos = (wallLen / count) * i;
+        placeBox(tPos, wallH / 2, 0.28, wallH, 0.2, wallMat);
+      }
+      // Sub-cornice decorative band
+      placeBand(wallH - 1.01, 0.22, 0.15, accentMat);
+      // Bold cornice cap
+      placeBand(wallH - 0.275, 0.55, 0.22, accentMat);
+
+    } else if (depthStyle === 'institutionalBands') {
+      // Corner pilasters only
+      placeBox(0, wallH / 2, 0.4, wallH, 0.15, wallMat);
+      placeBox(wallLen, wallH / 2, 0.4, wallH, 0.15, wallMat);
+      // Floor bands
+      const stories = Math.max(1, Math.round(wallH / 3.5));
+      const floorH = wallH / stories;
+      for (let fl = 1; fl < stories; fl++) {
+        placeBand(fl * floorH, 0.18, 0.1, accentMat);
+      }
+      // Cornice cap
+      placeBand(wallH - 0.225, 0.45, 0.18, accentMat);
+    }
+  }
+}
+
 let buildingGroups = [];
 let currentMode = 'textured';
 
@@ -673,7 +992,67 @@ function createBuilding(bld, mode) {
 
   const style = bld.style || {};
 
-  for (const wall of bld.walls) {
+  const lf = style.landmark_features || {};
+
+  // Primary wall: road-facing detection using wall bearing + road proximity/alignment.
+  // This is scalable — works for any building without manual overrides.
+  // Fall back to entrance scoring when no qualifying road is nearby.
+  let primaryWallIdx = -1;
+  if (typeof lf.primary_wall_idx === 'number') {
+    primaryWallIdx = lf.primary_wall_idx;
+  } else {
+    const roads = (window._sceneData && window._sceneData.roads) || [];
+    let bestRoadScore = 0;
+    for (let i = 0; i < bld.walls.length; i++) {
+      const w = bld.walls[i];
+      if (!w.is_exterior || !w.bearing) continue;
+      const bearingRad = w.bearing * Math.PI / 180;
+      const wnx = Math.sin(bearingRad), wnz = Math.cos(bearingRad);
+      const v = w.vertices;
+      const wcx = (v[0][0] + v[1][0]) / 2, wcz = (v[0][2] + v[1][2]) / 2;
+      // Score this wall by proximity + alignment to nearby roads
+      let wallScore = 0;
+      for (const road of roads) {
+        if (road.subclass === 'parking_aisle') continue;
+        const pts = road.points;
+        for (let ri = 0; ri < pts.length - 1; ri++) {
+          const ax = pts[ri][0], az = pts[ri][1];
+          const bx = pts[ri+1][0], bz = pts[ri+1][1];
+          const ddx = bx-ax, ddz = bz-az;
+          const len2 = ddx*ddx + ddz*ddz;
+          if (len2 < 0.01) continue;
+          let t = ((wcx-ax)*ddx + (wcz-az)*ddz) / len2;
+          t = Math.max(0, Math.min(1, t));
+          const px = ax + t*ddx, pz = az + t*ddz;
+          const rx = px - wcx, rz = pz - wcz;
+          const dist = Math.sqrt(rx*rx + rz*rz);
+          if (dist < 1 || dist > 35) continue;
+          const align = (wnx * rx + wnz * rz) / dist; // +1 = wall faces road
+          if (align < 0.25) continue;
+          // Weight by road class: named residential/secondary roads score higher
+          const classWeight = road.class === 'residential' || road.class === 'secondary' ? 2.0
+            : road.class === 'service' ? 0.3
+            : road.class === 'footway' ? 1.5 : 1.0;
+          const s = (align * classWeight) / dist;
+          if (s > wallScore) wallScore = s;
+        }
+      }
+      if (wallScore > bestRoadScore) { bestRoadScore = wallScore; primaryWallIdx = i; }
+    }
+    // Fallback: entrance count × 10000 + length
+    if (primaryWallIdx < 0) {
+      let primaryScore = -1;
+      for (let i = 0; i < bld.walls.length; i++) {
+        const w = bld.walls[i];
+        if (!w.is_exterior) continue;
+        const score = (w.entrances || []).length * 10000 + w.length;
+        if (score > primaryScore) { primaryScore = score; primaryWallIdx = i; }
+      }
+    }
+  }
+
+  for (let wallIdx = 0; wallIdx < bld.walls.length; wallIdx++) {
+    const wall = bld.walls[wallIdx];
     const positions = new Float32Array(wall.vertices.flat());
     const uvs = new Float32Array(wall.uvs.flat());
 
@@ -681,6 +1060,13 @@ function createBuilding(bld, mode) {
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geom.computeVertexNormals();
+
+    const matRoughness = style.material === 'glass' ? 0.1 :
+      style.material === 'stucco' ? 0.92 :
+      style.material === 'stone' ? 0.88 :
+      style.material && style.material.includes('brick') ? 0.85 : 0.8;
+    const matMetalness = style.material === 'glass' ? 0.1 :
+      style.material === 'metal' ? 0.6 : 0.02;
 
     let material;
 
@@ -696,14 +1082,7 @@ function createBuilding(bld, mode) {
         side: THREE.DoubleSide
       });
     } else if (mode === 'textured' || mode === 'color') {
-      const facadeTex = createProceduralFacade(style, wall);
-      // PBR roughness varies by material
-      const matRoughness = style.material === 'glass' ? 0.1 :
-        style.material === 'stucco' ? 0.92 :
-        style.material === 'stone' ? 0.88 :
-        style.material && style.material.includes('brick') ? 0.85 : 0.8;
-      const matMetalness = style.material === 'glass' ? 0.1 :
-        style.material === 'metal' ? 0.6 : 0.02;
+      const facadeTex = createProceduralFacade(style, wall, wallIdx === primaryWallIdx, bld.id);
       material = new THREE.MeshStandardMaterial({
         map: facadeTex, roughness: matRoughness, metalness: matMetalness,
         side: THREE.DoubleSide
@@ -736,7 +1115,9 @@ function createBuilding(bld, mode) {
 
       // Normal direction (outward)
       const nx = -dz / len, nz = dx / len;
-      const awningTop = h * 0.55;
+      const bldStories = style.stories || Math.max(1, Math.round(h / 3.5));
+      const floorH3d = h / bldStories;
+      const awningTop = floorH3d * 0.88;  // just below top of ground floor
       const awningBot = awningTop - awningDroop;
 
       // Place awning per entrance, or full-width if none
@@ -767,15 +1148,10 @@ function createBuilding(bld, mode) {
     }
   }
 
-  // Roof — procedural with NAIP-derived features
-  const roofPositions = [];
-  for (const tri of bld.roof) {
-    for (const v of tri) roofPositions.push(v[0], v[1], v[2]);
-  }
-  const roofGeom = new THREE.BufferGeometry();
-  roofGeom.setAttribute('position', new THREE.Float32BufferAttribute(roofPositions, 3));
-  roofGeom.computeVertexNormals();
+  // Arnis-inspired wall depth features
+  addWallDepth(bld, group, style, mode);
 
+  // Roof — flat or pitched based on style.roof_type
   let roofMat;
   if (mode === 'wireframe') {
     roofMat = new THREE.MeshBasicMaterial({
@@ -784,17 +1160,37 @@ function createBuilding(bld, mode) {
       side: THREE.DoubleSide
     });
   } else {
+    // Residential pitched roofs get varied tile colors; others use NAIP-derived roof_color
+    let roofColor = bld.roof_color || '#d9d3c8';
+    if ((style.roof_type === 'pitched' || style.roof_type === 'shed') && style.source === 'osm') {
+      const roofPalette = ['#7a3a2a', '#5c3d1e', '#607b8b', '#8b5e3c', '#4a4a4a', '#6b3a2a'];
+      roofColor = roofPalette[_hashId(bld.id) % roofPalette.length];
+    }
     roofMat = new THREE.MeshStandardMaterial({
-      color: bld.roof_color || '#d9d3c8',
-      roughness: 0.85, metalness: 0.05,
+      color: _varyColor(roofColor, bld.id + '_r', 0.08),
+      roughness: 0.88, metalness: 0.04,
       side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
     });
   }
-  const roofMesh = new THREE.Mesh(roofGeom, roofMat);
-  roofMesh.castShadow = true;
-  roofMesh.receiveShadow = true;
-  group.add(roofMesh);
+
+  if ((style.roof_type === 'pitched' || style.roof_type === 'shed') && bld.footprint_m && bld.footprint_m.length >= 3) {
+    const ridgeH = style.stories <= 1 ? 2.0 : 2.8;
+    const roofMesh = buildGableRoof(bld.footprint_m, bld.height, ridgeH, roofMat);
+    group.add(roofMesh);
+  } else {
+    const roofPositions = [];
+    for (const tri of bld.roof) {
+      for (const v of tri) roofPositions.push(v[0], v[1], v[2]);
+    }
+    const roofGeom = new THREE.BufferGeometry();
+    roofGeom.setAttribute('position', new THREE.Float32BufferAttribute(roofPositions, 3));
+    roofGeom.computeVertexNormals();
+    const roofMesh = new THREE.Mesh(roofGeom, roofMat);
+    roofMesh.castShadow = true;
+    roofMesh.receiveShadow = true;
+    group.add(roofMesh);
+  }
 
   // Roof equipment from NAIP analysis — aligned to building's longest edge
   if (mode !== 'wireframe' && bld.roof_features) {
@@ -967,10 +1363,13 @@ function createBuilding(bld, mode) {
     // NAIP-derived roof profile (multi-level stepped massing)
     if (bld.roof_profile) {
       for (const level of bld.roof_profile) {
-        const tierW = fW * level.fraction;
-        const tierD = fD * level.fraction;
+        const tierW = fW * (level.fraction != null ? level.fraction : 1.0);
+        const tierD = fD * (level.fraction != null ? level.fraction : 1.0);
         const tierH = level.height_add;
-        const tier = new THREE.Mesh(new THREE.BoxGeometry(tierW, tierH, tierD), tierMat);
+        const tier = new THREE.Mesh(
+          new THREE.BoxGeometry(tierW, tierH, tierD),
+          tierMat
+        );
         tier.position.set(cx, h + tierH / 2, cz);
         tier.rotation.y = -buildingAngle;
         tier.castShadow = true;
@@ -1152,6 +1551,150 @@ function createBuilding(bld, mode) {
       ped.material.side = THREE.DoubleSide;
       ped.castShadow = true;
       group.add(ped);
+    }
+  }
+
+  // Marquee — projecting canopy for theaters/cinemas
+  if (mode !== 'wireframe' && lf.marquee) {
+    const mWall = primaryWallIdx >= 0 ? bld.walls[primaryWallIdx] : null;
+    if (mWall) {
+      const v = mWall.vertices;
+      const wx0 = v[0][0], wz0 = v[0][2], wx1 = v[1][0], wz1 = v[1][2];
+      const wdx = wx1 - wx0, wdz = wz1 - wz0;
+      const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
+      let nx = -wdz / wlen, nz = wdx / wlen;
+      const bldCx = bld.centroid_m[0], bldCz = bld.centroid_m[1];
+
+      // Use the building footprint projected onto the primary wall's frame.
+      // This matches what a VLM sees: the whole building face as one image where
+      // "center" means the center of the full visible facade width.
+      const pRad = mWall.bearing * Math.PI / 180;
+      const pNx = Math.sin(pRad), pNz = Math.cos(pRad);
+      const pTx = pNz, pTz = -pNx; // tangent along facade
+      let tangMin = Infinity, tangMax = -Infinity, normMax = -Infinity;
+      for (const p of bld.footprint_m) {
+        const tProj = (p[0] - bldCx) * pTx + (p[1] - bldCz) * pTz;
+        const nProj = (p[0] - bldCx) * pNx + (p[1] - bldCz) * pNz;
+        tangMin = Math.min(tangMin, tProj); tangMax = Math.max(tangMax, tProj);
+        normMax = Math.max(normMax, nProj);
+      }
+      const totalLen = tangMax - tangMin;
+      // Feature position 0.5 → facade center; honoured from VLM-derived marquee_position
+      const marqFeatT = lf.marquee_position != null ? lf.marquee_position : 0.5;
+      const tangPos = tangMin + marqFeatT * totalLen;
+      // Position is at the facade face (normMax outward) at the given tangent offset
+      const wallCx = bldCx + tangPos * pTx + normMax * pNx;
+      const wallCz = bldCz + tangPos * pTz + normMax * pNz;
+
+      // Ensure normal points away from building centroid
+      if ((wallCx + nx - bldCx) ** 2 + (wallCz + nz - bldCz) ** 2 <
+          (wallCx - bldCx) ** 2 + (wallCz - bldCz) ** 2) { nx = -nx; nz = -nz; }
+
+      const wallAngle = Math.atan2(pTz, pTx);
+      const marqW = totalLen * 0.88;
+      const marqThick = 1.2;
+      const marqDepth = 2.2;
+      const marqY = 3.8;
+
+      // Canopy — dark green like the real Boulder Theater canopy
+      const canopyMat = new THREE.MeshStandardMaterial({ color: '#1a4a1a', roughness: 0.75 });
+
+      // Front face canvas — "BOULDER" marquee sign
+      const mCvs = document.createElement('canvas');
+      mCvs.width = 512; mCvs.height = 64;
+      const mCtx = mCvs.getContext('2d');
+      mCtx.fillStyle = '#1a1a1a';
+      mCtx.fillRect(0, 0, 512, 64);
+      // Green border stripe
+      mCtx.fillStyle = '#2a6a2a';
+      mCtx.fillRect(0, 0, 512, 8);
+      mCtx.fillRect(0, 56, 512, 8);
+      // Lightbulbs along top and bottom edges
+      mCtx.fillStyle = '#f8f040';
+      for (let bx = 16; bx < 512; bx += 24) {
+        mCtx.beginPath(); mCtx.arc(bx, 54, 5, 0, Math.PI * 2); mCtx.fill();
+        mCtx.beginPath(); mCtx.arc(bx, 10, 5, 0, Math.PI * 2); mCtx.fill();
+      }
+      // "BOULDER" neon red text
+      mCtx.fillStyle = '#ff2020';
+      mCtx.font = 'bold italic 36px Georgia, serif';
+      mCtx.textAlign = 'center'; mCtx.textBaseline = 'middle';
+      mCtx.fillText('BOULDER', 256, 32);
+      // White glow outline
+      mCtx.strokeStyle = 'rgba(255,160,160,0.6)';
+      mCtx.lineWidth = 2;
+      mCtx.strokeText('BOULDER', 256, 32);
+      const mTex = new THREE.CanvasTexture(mCvs);
+      mTex.colorSpace = THREE.SRGBColorSpace;
+      const signMat = new THREE.MeshStandardMaterial({ map: mTex, roughness: 0.5, side: THREE.DoubleSide });
+
+      // Canopy box
+      const canopyCx = wallCx + nx * marqDepth / 2;
+      const canopyCz = wallCz + nz * marqDepth / 2;
+      const canopy = new THREE.Mesh(
+        new THREE.BoxGeometry(marqW, marqThick, marqDepth),
+        canopyMat
+      );
+      canopy.position.set(canopyCx, marqY, canopyCz);
+      canopy.rotation.y = -wallAngle;
+      canopy.castShadow = true;
+      group.add(canopy);
+
+      // Front sign face (plane at outer edge of canopy)
+      const signH = 1.6;
+      const signPlane = new THREE.Mesh(new THREE.PlaneGeometry(marqW * 0.88, signH), signMat);
+      signPlane.position.set(
+        wallCx + nx * (marqDepth + 0.08),
+        marqY,
+        wallCz + nz * (marqDepth + 0.08)
+      );
+      signPlane.rotation.y = Math.atan2(nx, nz);
+      group.add(signPlane);
+
+      // Vertical pylon blade sign — tall enough to clear adjacent buildings
+      const pylonH = 7.0;
+      const pylonW = 1.6;
+      const pylonCvs = document.createElement('canvas');
+      pylonCvs.width = 128; pylonCvs.height = 512;
+      const pCtx = pylonCvs.getContext('2d');
+      // Gold background with subtle gradient
+      const pylonGrad = pCtx.createLinearGradient(0, 0, 128, 0);
+      pylonGrad.addColorStop(0, '#c8a020');
+      pylonGrad.addColorStop(0.5, '#e8c840');
+      pylonGrad.addColorStop(1, '#c8a020');
+      pCtx.fillStyle = pylonGrad;
+      pCtx.fillRect(0, 0, 128, 512);
+      // Border
+      pCtx.strokeStyle = '#8a6800';
+      pCtx.lineWidth = 6;
+      pCtx.strokeRect(4, 4, 120, 504);
+      // "Boulder" neon-style text — rotated vertically
+      pCtx.save();
+      pCtx.translate(64, 256);
+      pCtx.rotate(-Math.PI / 2);
+      pCtx.fillStyle = '#cc1a1a';
+      pCtx.font = 'bold italic 54px Georgia, serif';
+      pCtx.textAlign = 'center';
+      pCtx.textBaseline = 'middle';
+      pCtx.fillText('BOULDER', 0, 0);
+      // White outline for neon effect
+      pCtx.strokeStyle = 'rgba(255,200,200,0.4)';
+      pCtx.lineWidth = 2;
+      pCtx.strokeText('BOULDER', 0, 0);
+      pCtx.restore();
+      const pylonTex = new THREE.CanvasTexture(pylonCvs);
+      pylonTex.colorSpace = THREE.SRGBColorSpace;
+      const pylon = new THREE.Mesh(
+        new THREE.BoxGeometry(pylonW, pylonH, 0.18),
+        new THREE.MeshStandardMaterial({ map: pylonTex, roughness: 0.3, metalness: 0.4, side: THREE.DoubleSide })
+      );
+      pylon.position.set(
+        wallCx + nx * (marqDepth * 0.5),
+        marqY + marqThick / 2 + pylonH / 2,
+        wallCz + nz * (marqDepth * 0.5)
+      );
+      pylon.rotation.y = -wallAngle;
+      group.add(pylon);
     }
   }
 
@@ -1384,7 +1927,7 @@ for (const feat of (data.ground_features || [])) {
 
   const verts = [];
   for (const p of triPts) {
-    verts.push(p[0], getTerrainElevation(p[0], p[1]) + 0.01, p[1]);
+    verts.push(p[0], getTerrainElevation(p[0], p[1]) + 0.5, p[1]);
   }
 
   const geom = new THREE.BufferGeometry();
@@ -1430,7 +1973,7 @@ for (const road of (data.roads || [])) {
   if (road.points.length < 2) continue;
   const hw = (road.class === 'tertiary' ? 5 : road.class === 'residential' ? 4 : road.class === 'pedestrian' ? 6 : road.class === 'footway' ? 2 : 2.5) / 2;
   const color = roadColors[road.class] || 0x888888;
-  const y = road.class === 'footway' || road.class === 'pedestrian' ? 0.15 : 0.12;
+  const y = 0.5;
 
   const verts = [];
   for (let i = 0; i < road.points.length - 1; i++) {
@@ -1631,6 +2174,46 @@ for (const label of (data.street_labels || [])) {
   scene.add(mesh);
 }
 
+// Trees from OSM street furniture data
+{
+  const treesResp = await fetch('trees.json').catch(() => null);
+  if (treesResp && treesResp.ok) {
+    const trees = await treesResp.json();
+    const refLat = data.ref_lat, refLon = data.ref_lon;
+    const mLat = 111320, mLon = 111320 * Math.cos(refLat * Math.PI / 180);
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3d1e, roughness: 0.95, metalness: 0 });
+    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.9, metalness: 0 });
+    const foliageLightMat = new THREE.MeshStandardMaterial({ color: 0x3d7a32, roughness: 0.85, metalness: 0 });
+
+    const trunkGeom = new THREE.CylinderGeometry(0.1, 0.18, 2.5, 6);
+    const canopyGeom = new THREE.SphereGeometry(1.6, 7, 5);
+
+    for (const tree of trees) {
+      const tx = (tree.lon - refLon) * mLon;
+      const tz = (tree.lat - refLat) * mLat;
+      const ty = getTerrainElevation(tx, tz);
+
+      const tGroup = new THREE.Group();
+      const trunk = new THREE.Mesh(trunkGeom, trunkMat);
+      trunk.position.y = 1.25;
+      trunk.castShadow = true;
+      tGroup.add(trunk);
+
+      // Two overlapping spheres offset slightly for visual interest
+      const mat = (_hashId(tree.id + '') % 2 === 0) ? foliageMat : foliageLightMat;
+      const canopy = new THREE.Mesh(canopyGeom, mat);
+      canopy.position.y = 3.8;
+      canopy.scale.y = 1.1;
+      canopy.castShadow = true;
+      tGroup.add(canopy);
+
+      tGroup.position.set(tx, ty, tz);
+      scene.add(tGroup);
+    }
+  }
+}
+
 // Terrain mesh — background mountains
 const terrainGeom = new THREE.PlaneGeometry(
   (terrain.se_lon - terrain.nw_lon) * mPerDegLon,
@@ -1672,6 +2255,13 @@ function setMode(mode) {
 document.getElementById('btn-textured').addEventListener('click', () => { setMode('textured'); document.getElementById('btn-textured').classList.add('active'); });
 document.getElementById('btn-color').addEventListener('click', () => { setMode('color'); document.getElementById('btn-color').classList.add('active'); });
 document.getElementById('btn-wireframe').addEventListener('click', () => { setMode('wireframe'); document.getElementById('btn-wireframe').classList.add('active'); });
+
+// Expose camera for external navigation (dev/eval use)
+window.jumpTo = (px, py, pz, tx, ty, tz) => {
+  camera.position.set(px, py, pz);
+  controls.target.set(tx ?? 0, ty ?? 4, tz ?? 0);
+  controls.update();
+};
 
 // Camera presets
 document.getElementById('btn-street').addEventListener('click', () => {

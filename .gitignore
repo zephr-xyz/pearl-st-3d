@@ -2,4 +2,6 @@
 *.pyc
 __pycache__/
 node_modules/
+.env
+output/style_cache/
 data/wikidata_cache/

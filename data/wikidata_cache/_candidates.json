@@ -1,0 +1,567 @@
+{
+  "Q5043916": {
+    "label": "Carnegie Library",
+    "coord": {
+      "lon": -105.2815238,
+      "lat": 40.0200753
+    },
+    "aliases": [
+      "Carnegie Branch Library for Local History",
+      "Boulder Public Library Carnegie Branch of Local History"
+    ]
+  },
+  "Q59240396": {
+    "label": "Boulder Museum of Contemporary Art",
+    "coord": {
+      "lon": -105.277326887,
+      "lat": 40.015303467
+    },
+    "aliases": [
+      "BMoCA"
+    ]
+  },
+  "Q109058092": {
+    "label": "Boulder Post Office",
+    "coord": {
+      "lon": -105.2762264,
+      "lat": 40.017899
+    },
+    "aliases": []
+  },
+  "Q5911271": {
+    "label": "Hotel Boulderado",
+    "coord": {
+      "lon": -105.278611,
+      "lat": 40.019167
+    },
+    "aliases": []
+  },
+  "Q42384820": {
+    "label": "Boulder Theatre",
+    "coord": {
+      "lon": -105.2773885,
+      "lat": 40.0185753
+    },
+    "aliases": [
+      "Curran Opera House",
+      "Isis Theatre",
+      "Fox Isis Theatre",
+      "The Boulder Theatre",
+      "Boulder Theater"
+    ]
+  },
+  "Q42384847": {
+    "label": "UA Regency Theatre",
+    "coord": {
+      "lon": -105.2805565,
+      "lat": 40.0168785
+    },
+    "aliases": []
+  },
+  "Q122898225": {
+    "label": "Frasca Food and Wine",
+    "coord": {
+      "lon": -105.2725,
+      "lat": 40.01925
+    },
+    "aliases": []
+  },
+  "Q49397445": {
+    "label": "Arapahoe Pit",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49398576": {
+    "label": "Barron Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49399182": {
+    "label": "Belmont Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49401090": {
+    "label": "Blue Ribbon Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49401706": {
+    "label": "Boulder Pit Number 485",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49401858": {
+    "label": "Brannan Pit Number 14",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49402436": {
+    "label": "Buckskin Joe Number One Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49403600": {
+    "label": "Carfield Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49405430": {
+    "label": "Colorado Miracle Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49406062": {
+    "label": "Copeland Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49407815": {
+    "label": "Degge Clark Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49408676": {
+    "label": "Doolittle Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49409432": {
+    "label": "East Boston Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49410109": {
+    "label": "Ella C Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49410761": {
+    "label": "Essco Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49413148": {
+    "label": "G and S Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49413647": {
+    "label": "Genghis Khan Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49413893": {
+    "label": "Gilard Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49416927": {
+    "label": "Gunbarrel Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49417877": {
+    "label": "Heil Brothers Quarry",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49420059": {
+    "label": "India Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49421001": {
+    "label": "J O Lode Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49421548": {
+    "label": "Jenkins Pit",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49428573": {
+    "label": "Lucky Two Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49429865": {
+    "label": "Marshall Clay Pit",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49432989": {
+    "label": "Missing Link Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49433321": {
+    "label": "Mojave Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49434117": {
+    "label": "Morning Glory Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49435159": {
+    "label": "Nancy Group Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49437882": {
+    "label": "Oklahoma Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49443232": {
+    "label": "Red Gold Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49444997": {
+    "label": "Roosevelt Lease Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49450676": {
+    "label": "Spicer Pit",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49452568": {
+    "label": "Sussex Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49453600": {
+    "label": "Tennessee Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49454844": {
+    "label": "Tri State Quarry",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49455253": {
+    "label": "Turnpike Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49455343": {
+    "label": "Twin Brothers Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q49455830": {
+    "label": "United Mines",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q4949532": {
+    "label": "Boulder Adventure Film Festival",
+    "coord": {
+      "lon": -105.277222222,
+      "lat": 40.019194444
+    },
+    "aliases": []
+  },
+  "Q4949563": {
+    "label": "Boulder High School",
+    "coord": {
+      "lon": -105.274,
+      "lat": 40.0137
+    },
+    "aliases": []
+  },
+  "Q4949567": {
+    "label": "Boulder History Museum",
+    "coord": {
+      "lon": -105.281038256,
+      "lat": 40.020272989
+    },
+    "aliases": [
+      "Museum of Boulder at Tebo Center",
+      "Museum of Boulder",
+      "Boulder Historical Society",
+      "Boulder Historical Society and Museum"
+    ]
+  },
+  "Q133572833": {
+    "label": "Squires-Tourtellot House",
+    "coord": {
+      "lon": -105.28255,
+      "lat": 40.01891
+    },
+    "aliases": []
+  },
+  "Q133572919": {
+    "label": "Woodward-Baird House",
+    "coord": {
+      "lon": -105.2718,
+      "lat": 40.01743
+    },
+    "aliases": []
+  },
+  "Q12071072": {
+    "label": "timeline of Boulder, Colorado history",
+    "coord": {
+      "lon": -105.28,
+      "lat": 40.0176
+    },
+    "aliases": []
+  },
+  "Q42384845": {
+    "label": "State Theatre",
+    "coord": {
+      "lon": -105.2766295,
+      "lat": 40.0189602
+    },
+    "aliases": []
+  },
+  "Q123411790": {
+    "label": "First Baptist Church of Boulder",
+    "coord": {
+      "lon": -105.279166666,
+      "lat": 40.020277777
+    },
+    "aliases": []
+  },
+  "Q30261158": {
+    "label": "Paradox Sports",
+    "coord": {
+      "lon": -105.281306,
+      "lat": 40.016877
+    },
+    "aliases": []
+  },
+  "Q30268510": {
+    "label": "Coleman Associates",
+    "coord": {
+      "lon": -105.271566,
+      "lat": 40.015617
+    },
+    "aliases": []
+  },
+  "Q69779426": {
+    "label": "BPL Carnegie Branch For Local History",
+    "coord": {
+      "lon": -105.281497,
+      "lat": 40.019754
+    },
+    "aliases": [
+      "Boulder Public Library Carnegie Branch of Local History",
+      "Carnegie Branch For Local History"
+    ]
+  },
+  "Q42384814": {
+    "label": "Art Cinema",
+    "coord": {
+      "lon": -105.277825,
+      "lat": 40.018017
+    },
+    "aliases": [
+      "Varsity Theatre"
+    ]
+  },
+  "Q7158173": {
+    "label": "Pearl Street Mall",
+    "coord": {
+      "lon": -105.278,
+      "lat": 40.0184
+    },
+    "aliases": [
+      "Pearl Street"
+    ]
+  },
+  "Q138497976": {
+    "label": "Downtown Boulder Station",
+    "coord": {
+      "lon": -105.276529,
+      "lat": 40.017036
+    },
+    "aliases": []
+  },
+  "Q134682300": {
+    "label": "2025 Boulder fire attack",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018611111
+    },
+    "aliases": [
+      "2025 Pearl Street Mall attack",
+      "2025 Boulder firebombing attack"
+    ]
+  },
+  "Q5316869": {
+    "label": "Dushanbe Tea House",
+    "coord": {
+      "lon": -105.277,
+      "lat": 40.0154
+    },
+    "aliases": [
+      "Boulder Tea House",
+      "The Boulder Dushanbe Tea House"
+    ]
+  },
+  "Q117833497": {
+    "label": "Ywca Resource Center",
+    "coord": {
+      "lon": -105.278265919,
+      "lat": 40.021998586
+    },
+    "aliases": []
+  },
+  "Q49459769": {
+    "label": "Yellow Jacket Mine",
+    "coord": {
+      "lon": -105.278055555,
+      "lat": 40.018888888
+    },
+    "aliases": []
+  },
+  "Q108427274": {
+    "label": "Downtown Boulder Historic District",
+    "coord": {
+      "lon": -105.27478,
+      "lat": 40.01911
+    },
+    "aliases": []
+  },
+  "Q462154": {
+    "label": "Mind and Life Institute",
+    "coord": {
+      "lon": -105.27966,
+      "lat": 40.017624
+    },
+    "aliases": []
+  },
+  "Q115805796": {
+    "label": "Boulder County Courthouse",
+    "coord": {
+      "lon": -105.2781,
+      "lat": 40.0182
+    },
+    "aliases": []
+  }
+}

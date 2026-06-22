@@ -4,27 +4,11 @@ Enhance landmark buildings in viewer/scene.json with authoritative data.
 
 Priority chain (first source that yields a value per field wins):
   1. Wikidata facts  — P2048 height, P149 arch_style, P571 era, P84 architect,
-                       P1435 heritage  (authoritative, beats everything)
+                       P1435 heritage, P18 image  (authoritative, beats everything)
   2. OSM tags        — height / building:levels
   3. VLM features    — keyword-inferred prior from visual_description
   4. MANUAL_OVERRIDES — last-resort escape hatch, shrinks as Wikidata grows
   5. plain extrusion — unchanged default
-
-RUN ORDER (strictly enforced by documentation — do not reorder):
-  1. generate_scene_v3.py        → viewer/scene.json  (raw geometry)
-  2. enhance_landmarks.py        → this script        (height + metadata)
-  3. facade_projection.py        → Mapillary UV projection
-  4. apply_facade_params.py      → VLM facade params → scene.json
-  5. apply_textures_to_scene.py  → PBR texture paths  → scene.json
-
-Running this script AFTER step 3 will stretch Mapillary UV coordinates
-because vertex Y positions are rescaled to match corrected heights.
-
-New fields added to scene.json buildings (viewer-additive, no renames):
-  wikidata_qid, wikidata_tier, wikidata_composite, wikidata_facts
-  style.arch_style, style.era, style.architect_qids, style.heritage_qid
-  style.landmark_features, style.model_3d_suppressed
-  base_height  (internal idempotency anchor, not rendered)
 """
 import argparse
 import json
@@ -36,25 +20,18 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
-# Repo-relative path defaults
-# ---------------------------------------------------------------------------
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = str(_REPO_ROOT / "data")
 DEFAULT_OUTPUT_DIR = str(_REPO_ROOT / "viewer")
 
 METERS_PER_DEG_LAT = 111320.0
 
-# ---------------------------------------------------------------------------
-# Wikidata constants
-# ---------------------------------------------------------------------------
 WDQS_ENDPOINT = "https://query.wikidata.org/sparql"
 WDQS_UA = (
     "pearl-st-3d/1.0 "
     "(https://github.com/zephr-xyz/pearl-st-3d; sean.gorman@zephr.xyz)"
 )
 
-# Architecture style QID → string (subset relevant to Boulder / CO)
 _STYLE_QID = {
     "Q152095":  "romanesque_revival",
     "Q604600":  "art_deco",
@@ -66,19 +43,17 @@ _STYLE_QID = {
     "Q5322082": "craftsman",
     "Q179872":  "italianate",
     "Q1268134": "richardsonian_romanesque",
-    "Q3947":    "house",  # avoid mapping residences to arch styles
+    "Q12720942": "art_deco",
+    "Q186363":  "gothic_revival",
+    "Q3947":    "house",
 }
 
-# OSM tags to capture beyond height/levels
 _OSM_EXTRA_TAGS = (
     "wikidata", "wikipedia", "start_date",
     "architect", "heritage", "architect:wikidata",
 )
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 def _m_lng(lat: float) -> float:
     return METERS_PER_DEG_LAT * math.cos(math.radians(lat))
 
@@ -99,14 +74,30 @@ def _era(year: int) -> str:
     return "contemporary"
 
 
-# ---------------------------------------------------------------------------
-# OSM fetch — persists full tag set as cache
-# ---------------------------------------------------------------------------
+def _commons_thumb(filename: str, width: int = 1024) -> str:
+    """Fetch the correct thumbnail URL from the Wikimedia Commons API."""
+    params = urllib.parse.urlencode({
+        "action": "query", "titles": f"File:{filename}",
+        "prop": "imageinfo", "iiprop": "url", "iiurlwidth": str(width),
+        "format": "json", "origin": "*",
+    })
+    req = urllib.request.Request(
+        f"https://commons.wikimedia.org/w/api.php?{params}",
+        headers={"User-Agent": WDQS_UA},
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(resp.read())
+        for page in data.get("query", {}).get("pages", {}).values():
+            info = page.get("imageinfo", [])
+            if info:
+                return info[0].get("thumburl", "")
+    except Exception as exc:
+        print(f"  WARN: Commons thumb fetch {filename}: {exc}")
+    return ""
+
+
 def load_osm_buildings(bbox, cache_path: str, force_refresh: bool = False) -> list:
-    """
-    Load OSM buildings in bbox.  Writes cache_path on first fetch so reruns
-    are deterministic and offline-friendly.
-    """
     if not force_refresh and cache_path and os.path.exists(cache_path):
         with open(cache_path) as f:
             return json.load(f)
@@ -118,23 +109,21 @@ def load_osm_buildings(bbox, cache_path: str, force_refresh: bool = False) -> li
         f'relation["building"]({s},{w},{n},{e}););'
         f'out center tags;'
     )
-    data = urllib.parse.urlencode({"data": query}).encode()
+    params = urllib.parse.urlencode({"data": query})
     req = urllib.request.Request(
         "https://overpass-api.de/api/interpreter",
-        data=data,
-        headers={"User-Agent": WDQS_UA, "Content-Type": "application/x-www-form-urlencoded"},
+        data=params.encode(),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
-    resp = urllib.request.urlopen(req, timeout=45)
-    elements = json.loads(resp.read()).get("elements", [])
+    result = json.loads(urllib.request.urlopen(req, timeout=60).read())
 
     buildings = []
-    for el in elements:
+    for el in result["elements"]:
         tags = el.get("tags", {})
         center = el.get("center", {})
         lat, lon = center.get("lat", 0), center.get("lon", 0)
-        if not lat:
+        if lat == 0:
             continue
-
         height = None
         raw_h = tags.get("height", "")
         if raw_h:
@@ -149,7 +138,6 @@ def load_osm_buildings(bbox, cache_path: str, force_refresh: bool = False) -> li
                     height = float(raw_lvl.strip()) * 3.5
                 except ValueError:
                     pass
-
         entry = {
             "name": tags.get("name", ""),
             "lat": lat, "lon": lon,
@@ -166,19 +154,18 @@ def load_osm_buildings(bbox, cache_path: str, force_refresh: bool = False) -> li
         os.makedirs(os.path.dirname(os.path.abspath(cache_path)), exist_ok=True)
         with open(cache_path, "w") as f:
             json.dump(buildings, f, indent=2)
-
     return buildings
 
 
-# ---------------------------------------------------------------------------
-# Wikidata entity facts (entity data API, per-QID cache)
-# ---------------------------------------------------------------------------
 def _fetch_entity(qid: str, cache_dir: str) -> dict:
-    """Fetch structured facts for one QID; returns cached result if present."""
     path = os.path.join(cache_dir, f"{qid}.json")
     if os.path.exists(path):
-        with open(path) as f:
-            return json.load(f)
+        data = json.load(open(path))
+        # Re-fetch if cached before P18 image support was added
+        if "image_fetched" not in data:
+            os.remove(path)
+        else:
+            return data
 
     url = f"https://www.wikidata.org/wiki/Special:EntityData/{qid}.json"
     req = urllib.request.Request(url, headers={"User-Agent": WDQS_UA})
@@ -191,12 +178,11 @@ def _fetch_entity(qid: str, cache_dir: str) -> dict:
 
     entity = raw.get("entities", {}).get(qid, {})
     claims = entity.get("claims", {})
-    facts = {}
+    facts = {"image_fetched": True}
 
-    # English altLabels (aliases) — critical for Tier-2 name matching
     facts["aliases"] = [a["value"] for a in entity.get("aliases", {}).get("en", [])]
 
-    # P2048 height in metres (handles feet too)
+    # P2048 height
     for snak in claims.get("P2048", []):
         try:
             v = snak["mainsnak"]["datavalue"]["value"]
@@ -209,7 +195,7 @@ def _fetch_entity(qid: str, cache_dir: str) -> dict:
         except (KeyError, ValueError, TypeError):
             pass
 
-    # P571 inception year → era label
+    # P571 inception year → era
     for snak in claims.get("P571", []):
         try:
             t = snak["mainsnak"]["datavalue"]["value"]["time"]
@@ -222,7 +208,7 @@ def _fetch_entity(qid: str, cache_dir: str) -> dict:
         except (KeyError, TypeError):
             pass
 
-    # P149 architectural style (first; QID → string via lookup)
+    # P149 architectural style
     for snak in claims.get("P149", []):
         try:
             style_q = snak["mainsnak"]["datavalue"]["value"]["id"]
@@ -231,7 +217,7 @@ def _fetch_entity(qid: str, cache_dir: str) -> dict:
         except (KeyError, TypeError):
             pass
 
-    # P84 architect (QIDs; label resolution would need extra fetch, omit)
+    # P84 architect QIDs
     arch_qs = []
     for snak in claims.get("P84", []):
         try:
@@ -241,7 +227,7 @@ def _fetch_entity(qid: str, cache_dir: str) -> dict:
     if arch_qs:
         facts["architect_qids"] = arch_qs
 
-    # P1435 heritage designation (QID)
+    # P1435 heritage designation
     for snak in claims.get("P1435", []):
         try:
             facts["heritage_qid"] = snak["mainsnak"]["datavalue"]["value"]["id"]
@@ -249,7 +235,17 @@ def _fetch_entity(qid: str, cache_dir: str) -> dict:
         except (KeyError, TypeError):
             pass
 
-    # P625 coord (for Tier-2 spatial cross-check)
+    # P18 image (Wikimedia Commons)
+    for snak in claims.get("P18", []):
+        try:
+            fname = snak["mainsnak"]["datavalue"]["value"]
+            facts["image_commons"] = fname
+            facts["image_url"] = _commons_thumb(fname, 800)
+            break
+        except (KeyError, TypeError):
+            pass
+
+    # P625 coord
     for snak in claims.get("P625", []):
         try:
             v = snak["mainsnak"]["datavalue"]["value"]
@@ -258,7 +254,7 @@ def _fetch_entity(qid: str, cache_dir: str) -> dict:
         except (KeyError, TypeError):
             pass
 
-    # P4896 3D model — stub only; photoreal repo means Commons STL is a downgrade
+    # P4896 3D model stub
     for snak in claims.get("P4896", []):
         try:
             facts["model_3d_url"] = snak["mainsnak"]["datavalue"]["value"]
@@ -270,31 +266,22 @@ def _fetch_entity(qid: str, cache_dir: str) -> dict:
     os.makedirs(cache_dir, exist_ok=True)
     with open(path, "w") as f:
         json.dump(facts, f, indent=2)
-
     time.sleep(0.1)
     return facts
 
 
 def fetch_wikidata_facts(qids: list, cache_dir: str) -> dict:
-    """Fetch facts for all QIDs; {qid: facts}."""
     results = {}
     for qid in qids:
         facts = _fetch_entity(qid, cache_dir)
         results[qid] = facts
         print(f"  {qid}: h={facts.get('height_m','?')}m  "
-              f"style={facts.get('arch_style', '-')}  era={facts.get('era', '-')}")
+              f"style={facts.get('arch_style', '-')}  era={facts.get('era', '-')}  "
+              f"image={'image_url' in facts}")
     return results
 
 
-# ---------------------------------------------------------------------------
-# Wikidata candidate discovery (SPARQL bbox query, cached)
-# ---------------------------------------------------------------------------
 def _fetch_wikidata_candidates(bld_latlons: dict, cache_dir: str) -> dict:
-    """
-    SPARQL query for building-type entities in the scene bbox.
-    Also fetches entity data per candidate (for aliases) — cached to <QID>.json.
-    Returns {QID: {label, coord, aliases}}.
-    """
     cache_path = os.path.join(cache_dir, "_candidates.json")
     if os.path.exists(cache_path):
         with open(cache_path) as f:
@@ -304,13 +291,10 @@ def _fetch_wikidata_candidates(bld_latlons: dict, cache_dir: str) -> dict:
     lons = [ll[1] for ll in bld_latlons.values()]
     center_lat = sum(lats) / len(lats)
     center_lon = sum(lons) / len(lons)
-    # radius_km: half the diagonal of the bbox, capped at 1km
-    import math as _math
     dlat = (max(lats) - min(lats)) * 111.32
-    dlon = (max(lons) - min(lons)) * 111.32 * _math.cos(_math.radians(center_lat))
-    radius_km = min(1.0, _math.sqrt(dlat**2 + dlon**2) / 2 + 0.3)
+    dlon = (max(lons) - min(lons)) * 111.32 * math.cos(math.radians(center_lat))
+    radius_km = min(1.0, math.sqrt(dlat**2 + dlon**2) / 2 + 0.3)
 
-    # wikibase:around is WDQS-optimised for geo lookup (no property-path cost)
     sparql = f"""
 SELECT DISTINCT ?item ?itemLabel ?coord WHERE {{
   SERVICE wikibase:around {{
@@ -342,10 +326,9 @@ LIMIT 200
     except Exception as exc:
         print(f"  WARN: Wikidata SPARQL candidates failed: {exc}")
 
-    # Enrich with aliases via entity data API (also pre-populates QID fact cache)
     print(f"  Enriching {len(candidates)} candidates with aliases…")
     for qid, ent in candidates.items():
-        facts = _fetch_entity(qid, cache_dir)  # caches to <QID>.json
+        facts = _fetch_entity(qid, cache_dir)
         ent["aliases"] = facts.get("aliases", [])
         if facts.get("coord") and not ent["coord"]:
             ent["coord"] = facts["coord"]
@@ -353,19 +336,14 @@ LIMIT 200
     os.makedirs(cache_dir, exist_ok=True)
     with open(cache_path, "w") as f:
         json.dump(candidates, f, indent=2)
-
     return candidates
 
 
-# ---------------------------------------------------------------------------
-# Two-tier QID resolver  (~55 lines, no conflation-package dependency)
-# ---------------------------------------------------------------------------
 def _norm(s: str) -> str:
     return " ".join(s.lower().strip().split())
 
 
 def _name_score(bld_names: list, wd_names: list) -> float:
-    """Max token_set_ratio across all bld×wd pairings. 0.5 (neutral) if either empty."""
     if not bld_names or not wd_names:
         return 0.5
     from rapidfuzz import fuzz
@@ -380,23 +358,12 @@ def _name_score(bld_names: list, wd_names: list) -> float:
 
 def resolve_qids(
     scene_buildings: list, osm_buildings: list, bld_latlons: dict, data_dir: str
-) -> tuple[dict, dict]:
-    """
-    Returns (qid_map, osm_by_bid).
-
-    qid_map   {building_id: {qid, tier, composite}}
-    osm_by_bid {building_id: best OSM entry within 20m}
-
-    Tier 1: OSM wikidata=* tag on the spatially-matched OSM building (trusted).
-    Tier 2: composite = 0.45*dist_score + 0.45*name_score + 0.10*0.5 (neutral ID)
-            Greedy one-to-one assignment above threshold 0.55; radius 30m.
-    """
-    OSM_MATCH_R = 20.0   # metres — OSM→Overture proximity
-    TIER2_R = 30.0       # metres — Wikidata candidate radius
+) -> tuple:
+    OSM_MATCH_R = 20.0
+    TIER2_R = 100.0   # increased from 30m — large block buildings (Boulderado) need more slack
     W_DIST, W_NAME, W_IDENT = 0.45, 0.45, 0.10
     THRESHOLD = 0.55
 
-    # Spatial match each building to nearest OSM entry
     osm_by_bid: dict = {}
     for bld in scene_buildings:
         bid = bld["id"]
@@ -409,7 +376,6 @@ def resolve_qids(
         if best_osm:
             osm_by_bid[bid] = best_osm
 
-    # Tier 1 — direct OSM wikidata tag
     qid_map: dict = {}
     used_qids: set = set()
     for bld in scene_buildings:
@@ -419,7 +385,6 @@ def resolve_qids(
             qid_map[bid] = {"qid": qid, "tier": 1, "composite": 1.0}
             used_qids.add(qid)
 
-    # Tier 2 — fuzzy name + spatial composite against WDQS bbox candidates
     wd_cache = os.path.join(data_dir, "wikidata_cache")
     candidates = _fetch_wikidata_candidates(bld_latlons, wd_cache)
     avail = {q: c for q, c in candidates.items() if q not in used_qids}
@@ -443,7 +408,7 @@ def resolve_qids(
                         continue
                     ds = max(0.0, 1.0 - d / TIER2_R)
                 else:
-                    ds = 0.5  # neutral-on-null
+                    ds = 0.5
 
                 wd_names = [ent.get("label", "")] + ent.get("aliases", [])
                 ns = _name_score(bld_names, wd_names)
@@ -465,56 +430,110 @@ def resolve_qids(
 
 
 # ---------------------------------------------------------------------------
-# VLM feature extractor (demoted to fallback tier; unchanged logic)
+# VLM landmark feature extractor (fallback tier)
 # ---------------------------------------------------------------------------
 def extract_landmark_features(desc: str) -> dict:
     if not desc:
         return {}
     dl = desc.lower()
     f: dict = {}
-    if "multi-tiered" in dl or "tiered" in dl:   f["tiered"] = True
-    if "tower" in dl or "central tower" in dl:    f["tower"] = True
-    if "clock" in dl:                             f["clock"] = True
-    if "dome" in dl or "cupola" in dl:            f["dome"] = True
-    if "spire" in dl or "steeple" in dl:          f["spire"] = True
-    if "turret" in dl:                            f["turret"] = True
-    if "marquee" in dl or "neon" in dl:           f["marquee"] = True
-    if "bas-relief" in dl or "relief sculpture" in dl: f["bas_relief"] = True
-    if "column" in dl or "pilaster" in dl or "corinthian" in dl or "doric" in dl:
-        f["columns"] = True
-    if "pediment" in dl or "gable" in dl or "stepped gable" in dl: f["pediment"] = True
-    if "cornice" in dl or "dentil" in dl:         f["cornice"] = True
-    if "symmetrical" in dl:                       f["symmetrical"] = True
-    if "art deco" in dl:              f["style"] = "art_deco"
-    elif "romanesque" in dl:          f["style"] = "romanesque"
-    elif "victorian" in dl:           f["style"] = "victorian"
+    if "multi-tiered" in dl or "tiered" in dl: f["tiered"] = True
+    if "tower" in dl or "central tower" in dl:  f["tower"] = True
+    if "clock" in dl:                            f["clock"] = True
+    if "dome" in dl or "cupola" in dl:           f["dome"] = True
+    if "spire" in dl or "steeple" in dl:         f["spire"] = True
+    if "turret" in dl:                           f["turret"] = True
+    if "art deco" in dl:                         f["style"] = "art_deco"
+    elif "romanesque" in dl:                     f["style"] = "romanesque"
+    elif "victorian" in dl:                      f["style"] = "victorian"
     elif "neoclassical" in dl or "neo-classical" in dl: f["style"] = "neoclassical"
-    elif "gothic" in dl:              f["style"] = "gothic"
+    elif "gothic" in dl:                         f["style"] = "gothic"
+    if "marquee" in dl or "neon" in dl:          f["marquee"] = True
+    if "bas-relief" in dl or "relief sculpture" in dl: f["bas_relief"] = True
+    if "column" in dl or "pilaster" in dl:       f["columns"] = True
+    if "pediment" in dl or "gable" in dl:        f["pediment"] = True
+    if "cornice" in dl or "dentil" in dl:        f["cornice"] = True
+    if "symmetrical" in dl:                      f["symmetrical"] = True
     m = re.search(r"(\d+)[- ]stor(?:y|ey|ied)", dl)
     if m:
         f["stories_from_desc"] = int(m.group(1))
-    if "multi-story" in dl or "multi-tiered" in dl:
-        f["min_stories"] = 3
-    if "grand" in dl:
-        f["grand"] = True
+    if "multi-story" in dl or "multi-tiered" in dl: f["min_stories"] = 3
+    if "grand" in dl: f["grand"] = True
     return f
 
 
 # ---------------------------------------------------------------------------
-# Manual overrides — last-resort escape hatch
+# Awning extraction from VLM description (VD-based awning pass)
 # ---------------------------------------------------------------------------
-MANUAL_OVERRIDES = {
-    "Boulder County Government":          {"height": 20.0, "stories": 4},
-    "Boulder Theater":                    {"height": 14.0, "stories": 3},
-    "Hotel Boulderado":                   {"height": 18.0, "stories": 5},
-    "Wells Fargo Advisors":               {"height": 12.0, "stories": 3},
-    "Independent Order of Odd Fellows":   {"height": 14.0, "stories": 3},
-    "Free People":                        {"height": 12.0, "stories": 3},
-}
+_AWNING_COLORS = [
+    ("yellow",     "#ccaa00"),
+    ("gold",       "#ccaa00"),
+    ("dark brown", "#3a1a0a"),
+    ("dark metal", "#333333"),
+    ("dark grey",  "#333333"),
+    ("dark gray",  "#333333"),
+    ("dark blue",  "#1a237e"),
+    ("brown",      "#5c3a1a"),
+    ("grey",       "#555555"),
+    ("gray",       "#555555"),
+    ("teal",       "#1a7a6a"),
+    ("sage",       "#5a7a5a"),
+    ("purple",     "#6a2a7a"),
+    ("maroon",     "#6b1a1a"),
+    ("burgundy",   "#6b1a1a"),
+    ("navy",       "#1a237e"),
+    ("blue",       "#1a3a6a"),
+    ("green",      "#2a6a2a"),
+    ("red",        "#cc2222"),
+    ("black",      "#2a2a2a"),
+    ("white",      "#e0e0e0"),
+    ("cream",      "#d4c8a0"),
+    ("orange",     "#cc6622"),
+    ("dark",       "#333333"),
+]
+
+
+def _extract_awning_from_desc(desc: str):
+    dl = desc.lower()
+    if "awning" not in dl and "canopy" not in dl:
+        return None
+    style = "flat"
+    _p = 50
+    stripe_pat = (rf"(?:stripe|striped)[^.]{{0,{_p}}}(?:awning|canopy)"
+                  rf"|(?:awning|canopy)[^.]{{0,{_p}}}(?:stripe|striped)")
+    if re.search(stripe_pat, dl):
+        style = "striped"
+    elif re.search(r"\bslop|angled|slanted", dl):
+        style = "slope"
+    color = "#3a3a3a"
+    for word, hex_color in _AWNING_COLORS:
+        pat = (rf"(?:{re.escape(word)}[^.]{{0,50}}(?:awning|canopy)"
+               rf"|(?:awning|canopy)[^.]{{0,50}}{re.escape(word)})")
+        if re.search(pat, dl):
+            color = hex_color
+            break
+    result = {"style": style, "color": color}
+    if style == "striped":
+        result["stripe_color"] = "rgba(255,255,255,0.45)"
+    return result
+
 
 # ---------------------------------------------------------------------------
-# Priority-chain helpers
+# Manual overrides (last-resort escape hatch)
 # ---------------------------------------------------------------------------
+MANUAL_OVERRIDES = {
+    "Boulder County Government":           {"height": 20.0, "stories": 4},
+    "Boulder Theater":                     {"height": 14.0, "stories": 3,
+                                            "material": "stucco", "color": "#e2dbbe"},
+    "Hotel Boulderado":                    {"height": 18.0, "stories": 5,
+                                            "awning": {"color": "#2d6a2d", "style": "flat"},
+                                            "accent": "#4a2e14"},
+    "Wells Fargo Advisors":                {"height": 12.0, "stories": 3},
+    "Independent Order of Odd Fellows":    {"height": 14.0, "stories": 3},
+    "Free People":                         {"height": 12.0, "stories": 3},
+}
+
+
 _PRI = {"wikidata": 0, "osm": 1, "vlm": 2, "manual": 3, "default": 4}
 
 
@@ -538,16 +557,7 @@ def _set_style(style, key, val, source, src_map, log):
     return False
 
 
-# ---------------------------------------------------------------------------
-# Geometry rescaling — idempotent via base_height
-# ---------------------------------------------------------------------------
 def rescale_geometry(bld):
-    """
-    Rescale wall/roof vertices from base_height to current height.
-    base_height is stamped on first run and never overwritten, so repeated
-    runs always rescale from the original generator height — not from the
-    previously corrected height.  This makes the operation idempotent.
-    """
     base = bld.get("base_height", bld["height"])
     target = bld["height"]
     if abs(target - base) < 0.01:
@@ -563,30 +573,18 @@ def rescale_geometry(bld):
             tri[i] = [v[0], v[1] * ratio, v[2]]
 
 
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
 def _parse_args():
     p = argparse.ArgumentParser(
         description="Enhance scene.json with Wikidata/OSM/VLM priority chain.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--data-dir", default=DEFAULT_DATA_DIR,
-                   help="data/ directory (default: repo-relative)")
-    p.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR,
-                   help="viewer/ directory containing scene.json")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Print priority decisions without writing scene.json")
-    p.add_argument("--no-wikidata", action="store_true",
-                   help="Skip Wikidata fetch (OSM + VLM + overrides only)")
-    p.add_argument("--refresh-osm", action="store_true",
-                   help="Re-query Overpass even if osm_buildings.json exists")
+    p.add_argument("--data-dir", default=DEFAULT_DATA_DIR)
+    p.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--no-wikidata", action="store_true")
+    p.add_argument("--refresh-osm", action="store_true")
     return p.parse_args()
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 def main():
     args = _parse_args()
     data_dir = args.data_dir
@@ -603,7 +601,6 @@ def main():
     ref_lon = scene["ref_lon"]
     m_lon = _m_lng(ref_lat)
 
-    # Longest VLM description per building
     desc_by_bld: dict = {}
     for wp in tile["waypoints"]:
         bid = wp.get("overture_building_id", "")
@@ -611,7 +608,6 @@ def main():
         if bid and desc and len(desc) > len(desc_by_bld.get(bid, "")):
             desc_by_bld[bid] = desc
 
-    # Building centroid → lat/lon
     bld_latlons: dict = {}
     for bld in scene["buildings"]:
         cx, cz = bld["centroid_m"]
@@ -620,12 +616,10 @@ def main():
             cx / m_lon + ref_lon,
         )
 
-    # Stamp base_height (first run only — idempotency anchor)
     for bld in scene["buildings"]:
         if "base_height" not in bld:
             bld["base_height"] = bld["height"]
 
-    # OSM
     lats = [ll[0] for ll in bld_latlons.values()]
     lons = [ll[1] for ll in bld_latlons.values()]
     bbox = (min(lats) - 0.001, min(lons) - 0.001, max(lats) + 0.001, max(lons) + 0.001)
@@ -637,7 +631,6 @@ def main():
     n_wd = sum(1 for b in osm_buildings if b.get("wikidata"))
     print(f"  total={len(osm_buildings)}  with_height={n_h}  with_wikidata_tag={n_wd}")
 
-    # Wikidata QID resolution + fact fetch
     if not args.no_wikidata:
         print("\nResolving Wikidata QIDs…")
         qid_map, osm_by_bid = resolve_qids(
@@ -651,9 +644,7 @@ def main():
         print(f"\nFetching Wikidata facts for {len(all_qids)} QIDs…")
         wd_facts = fetch_wikidata_facts(all_qids, wd_cache_dir)
     else:
-        qid_map: dict = {}
-        wd_facts: dict = {}
-        # Still do OSM spatial match for height-only mode
+        qid_map, wd_facts = {}, {}
         osm_by_bid = {}
         for bld in scene["buildings"]:
             bid = bld["id"]
@@ -666,15 +657,15 @@ def main():
             if best:
                 osm_by_bid[bid] = best
 
-    # Priority chain
     print("\nApplying priority chain…")
     all_decisions: dict = {}
 
     for bld in scene["buildings"]:
         bid = bld["id"]
         style = bld.get("style", {})
-        sty_src: dict = {}   # style-key → winning source
-        log: dict = {}       # field → winning source (for report)
+        sty_src: dict = {}
+        log: dict = {}
+        pois = bld.get("pois", [])
 
         # ── Wikidata ──────────────────────────────────────────────────────
         q_entry = qid_map.get(bid)
@@ -684,7 +675,8 @@ def main():
             bld["wikidata_qid"] = qid
             bld["wikidata_tier"] = q_entry["tier"]
             bld["wikidata_composite"] = round(q_entry["composite"], 3)
-            bld["wikidata_facts"] = {k: v for k, v in facts.items() if k != "aliases"}
+            bld["wikidata_facts"] = {k: v for k, v in facts.items()
+                                     if k not in ("aliases", "image_fetched")}
 
             if facts.get("height_m"):
                 _set_height(bld, facts["height_m"], "wikidata", log)
@@ -700,8 +692,12 @@ def main():
             if facts.get("heritage_qid"):
                 style["heritage_qid"] = facts["heritage_qid"]
                 log["heritage"] = "wikidata"
+            if facts.get("image_url"):
+                style["wikidata_image_url"] = facts["image_url"]
+                style["wikidata_image_commons"] = facts.get("image_commons", "")
+                log["image"] = "wikidata"
             if facts.get("model_3d_suppressed"):
-                style["model_3d_suppressed"] = True  # stub; not rendered
+                style["model_3d_suppressed"] = True
 
         # ── OSM ───────────────────────────────────────────────────────────
         osm = osm_by_bid.get(bid, {})
@@ -731,17 +727,32 @@ def main():
                                 "vlm", log)
 
         # ── Manual overrides ─────────────────────────────────────────────
-        for poi in bld.get("pois", []):
+        for poi in pois:
             ov = MANUAL_OVERRIDES.get(poi)
             if ov:
                 _set_height(bld, ov["height"], "manual", log)
                 if bld.get("_h_src") == "manual":
                     style["stories"] = ov["stories"]
+                if "awning" in ov:
+                    style["awning"] = ov["awning"]
+                if "accent" in ov:
+                    style["accent"] = ov["accent"]
+                if "material" in ov:
+                    style["material"] = ov["material"]
+                if "color" in ov:
+                    style["color"] = ov["color"]
                 break
+
+        # ── VD-based awning pass (runs after manual overrides) ────────────
+        if not any(MANUAL_OVERRIDES.get(p, {}).get("awning") for p in pois):
+            if desc:
+                vd_awning = _extract_awning_from_desc(desc)
+                if vd_awning:
+                    style["awning"] = vd_awning
 
         bld["style"] = style
         all_decisions[bid] = {
-            "name":       (bld.get("pois") or [bid[:12]])[0],
+            "name":       (pois or [bid[:12]])[0],
             "height":     bld["height"],
             "base_height": bld.get("base_height"),
             "height_src": bld.get("_h_src", "default"),
@@ -753,13 +764,11 @@ def main():
 
         rescale_geometry(bld)
 
-    # Report (always printed, even without --dry-run)
-    print("\n=== Priority-chain decisions ===")
+    print("\n=== Priority-chain decisions (Wikidata matches) ===")
     for info in all_decisions.values():
-        if info["qid"]:
-            qid_str = f"QID={info['qid']} T{info['tier']} {info['composite']:.2f}"
-        else:
-            qid_str = "no QID"
+        if not info["qid"]:
+            continue
+        qid_str = f"QID={info['qid']} T{info['tier']} {info['composite']:.2f}"
         dec = ", ".join(f"{k}:{v}" for k, v in info["decisions"].items()) or "—"
         print(f"  {info['name'][:35]:35s}  h={info['height']:5.1f}m "
               f"[{info['height_src']:8s}]  {qid_str}  [{dec}]")
@@ -768,7 +777,6 @@ def main():
         print("\n[dry-run] scene.json NOT written.")
         return
 
-    # Strip internal tracking field before serialising
     for bld in scene["buildings"]:
         bld.pop("_h_src", None)
 
@@ -777,9 +785,12 @@ def main():
         json.dump(scene, f)
 
     n_qid = sum(1 for b in scene["buildings"] if b.get("wikidata_qid"))
+    n_img = sum(1 for b in scene["buildings"]
+                if b.get("style", {}).get("wikidata_image_url"))
     print(f"\nWrote {out_path}")
-    print(f"  Buildings with Wikidata QID : {n_qid} / {len(scene['buildings'])}")
-    print(f"  Heights corrected from base : "
+    print(f"  Buildings with Wikidata QID   : {n_qid} / {len(scene['buildings'])}")
+    print(f"  Buildings with Wikidata image : {n_img}")
+    print(f"  Heights corrected from base   : "
           f"{sum(1 for b in scene['buildings'] if b.get('base_height') != b['height'])}")
 
 
