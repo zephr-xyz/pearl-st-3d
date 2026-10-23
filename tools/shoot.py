@@ -108,7 +108,7 @@ class WS:
     def __init__(self, url):
         hostport, path = url[5:].split("/", 1)
         host, port = hostport.split(":")
-        self.sock = socket.create_connection((host, int(port)), timeout=120)
+        self.sock = socket.create_connection((host, int(port)), timeout=30)
         key = base64.b64encode(os.urandom(16)).decode()
         req = (f"GET /{path} HTTP/1.1\r\nHost: {hostport}\r\nUpgrade: websocket\r\n"
                f"Connection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n")
@@ -181,8 +181,8 @@ class WS:
 class Page:
     def __init__(self, ws_url, width, height):
         self.ws = WS(ws_url)
-        tid = self.ws.call("Target.createTarget", {"url": "about:blank"})["targetId"]
-        self.sid = self.ws.call("Target.attachToTarget", {"targetId": tid, "flatten": True})["sessionId"]
+        self.tid = self.ws.call("Target.createTarget", {"url": "about:blank"})["targetId"]
+        self.sid = self.ws.call("Target.attachToTarget", {"targetId": self.tid, "flatten": True})["sessionId"]
         # the exact viewport, whatever the window frame takes (headless gives 1920x993 for a 1080 window)
         self.ws.call("Emulation.setDeviceMetricsOverride",
                      {"width": width, "height": height, "deviceScaleFactor": 1, "mobile": False}, session=self.sid)
@@ -201,6 +201,16 @@ class Page:
     def navigate(self, url):
         self.ws.events.clear()
         self.ws.call("Page.navigate", {"url": url}, session=self.sid)
+
+    def close(self):
+        try:
+            self.ws.call("Target.closeTarget", {"targetId": self.tid}, timeout=10)
+        except Exception:
+            pass
+        try:
+            self.ws.sock.close()
+        except Exception:
+            pass
 
     def console(self):
         """Console errors, warnings and exceptions seen so far (and clear them)."""
@@ -245,7 +255,7 @@ def main():
     profile = tempfile.mkdtemp(prefix="shoot-", dir=WORK)
     atexit.register(lambda: shutil.rmtree(profile, ignore_errors=True))
     base = a.url or start_server()
-    page = Page(start_chrome(profile, a.width, a.height), a.width, a.height)
+    ws_url = start_chrome(profile, a.width, a.height)
 
     views = [v for v in a.views.split(",") if v] or [None]
     outdir = a.out if (a.out and (len(views) > 1 or os.path.isdir(a.out) or not a.out.endswith(".png"))) else os.path.join(WORK, "shots")
@@ -257,17 +267,25 @@ def main():
         qs = urllib.parse.urlencode(q) + (("&" + a.params) if a.params else "")
         url = base + ("&" if "?" in base else "?") + qs if "?" in base else base + "?" + qs
         label = view or (a.params.replace("&", "_").replace("=", "-") or "shot")
+        # a fresh tab per view: a tab reused across full scene rebuilds answered slower each
+        # time (32 s, then 105 s, then not at all within 2 minutes)
+        page = Page(ws_url, a.width, a.height)
         t0 = time.time()
         page.navigate(url)
         ready = False
         while time.time() - t0 < a.timeout:
-            if page.eval("window.__ready === true") is True:
-                ready = True
-                break
+            try:
+                if page.eval("window.__ready === true") is True:
+                    ready = True
+                    break
+            except (socket.timeout, TimeoutError):
+                print(f"{label}: page busy for 30 s at {time.time() - t0:.0f} s, still waiting")
+                continue
             time.sleep(0.25)
         if not ready:
             print(f"{label}: WARNING never ready after {a.timeout:.0f} s; console: {page.console()}")
             worst = max(worst, 1)
+            page.close()
             continue
         time.sleep(a.settle)
         if not a.no_shot:
@@ -283,6 +301,7 @@ def main():
             print(f"{label}: console {e}")
         if errs:
             worst = max(worst, 3)
+        page.close()
     return worst
 
 
