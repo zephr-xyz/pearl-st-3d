@@ -113,14 +113,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; ove
 <script type="importmap">
 {
   "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
   }
 }
 </script>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import materials from './src/materials/materials.js';
+import { attachDecal } from './src/decal.js';
+import { createEnvironment } from './src/env.js';
+import { FacadeBuckets, buildWall } from './src/facades.js';
 
 const canvas = document.getElementById('canvas');
 const tooltip = document.getElementById('tooltip');
@@ -131,6 +135,10 @@ textureLoader.crossOrigin = 'anonymous';
 const PARAMS = new URLSearchParams(location.search);
 const CAPTURE = PARAMS.get('capture') === '1';
 const SEED = PARAMS.get('seed') || 'pearl';
+// A/B switches for the new rendering: lit=0 keeps the old three-light setup and canvas sky,
+// mat=0 keeps the painted canvas facades and flat ground
+const LIT = PARAMS.get('lit') !== '0';
+const MAT = PARAMS.get('mat') !== '0';
 
 // Deterministic randomness: every visual draw comes from a seeded stream named by what it
 // decorates, so two loads (or two commits) differ only in rendering, never in content.
@@ -187,6 +195,8 @@ if (CAPTURE) {
   document.getElementById('controls').style.display = 'none';
 }
 
+let env = null;
+if (!LIT) {
 // Lighting — soft, even illumination (Mapbox-style flat clarity)
 const ambient = new THREE.HemisphereLight(0xffffff, 0xe8e0d8, 0.9);
 scene.add(ambient);
@@ -259,6 +269,17 @@ const skyTex = new THREE.CanvasTexture(skyCanvas);
 skyTex.mapping = THREE.EquirectangularReflectionMapping;
 skyTex.colorSpace = THREE.SRGBColorSpace;
 scene.background = skyTex;
+} else {
+  // real sun for Boulder at date= (MM-DD) and tod= (local decimal hour), physical sky as
+  // background and image-based light, cascaded sun shadow, AgX with a metered exposure
+  renderer.shadowMap.type = THREE.PCFShadowMap;   // (PCFSoft is gone in r186; the sun shadow's radius softens it)
+  renderer.toneMapping = THREE.AgXToneMapping;
+  env = createEnvironment(renderer, scene, {
+    date: PARAMS.get('date') || '04-17', hour: PARAMS.has('tod') ? +PARAMS.get('tod') : 16.75,
+    quality: PARAMS.get('q') || 'med', exposureScale: PARAMS.has('expo') ? +PARAMS.get('expo') : 1,
+    envIntensity: PARAMS.has('envi') ? +PARAMS.get('envi') : 1, sunScale: PARAMS.has('suni') ? +PARAMS.get('suni') : 1,
+  });
+}
 
 // Load scene data
 setProgress(10, 'Loading buildings...');
@@ -271,6 +292,33 @@ setProgress(40, 'Loading terrain...');
 const terrainResp = await fetch('terrain.json');
 const terrain = await terrainResp.json();
 setProgress(55, 'Building 3D geometry...');
+// GPU-baked surface library (brick, sandstone, stucco, pavers, concrete, asphalt); the
+// bake is a readiness gate so no frame shows flat stand-ins
+let matsReady = false;
+if (MAT) {
+  setProgress(50, 'Baking surfaces...');
+  try {
+    await materials.init({ renderer, params: { raw: PARAMS }, ready: false });
+    await materials.ready;
+    matsReady = true;
+  } catch (e) {
+    console.error('[materials] init failed, painted facades kept', e);
+  }
+}
+// shared materials of the 3D facades (src/facades.js): glass reflecting the sky dome at its
+// own intensity (three replaces envMapIntensity by the scene's when the map comes from
+// scene.environment, so the glass takes the map directly), dark interiors, doors
+const facadeShared = matsReady ? {
+  glass: new THREE.MeshPhysicalMaterial({ color: 0x0b1116, roughness: 0.07, metalness: 0, envMap: scene.environment, envMapIntensity: 1.6 }),
+  dark: new THREE.MeshStandardMaterial({ color: 0x14110e, roughness: 0.92, metalness: 0 }),
+  door: new THREE.MeshStandardMaterial({ color: 0x2a1b10, roughness: 0.55, metalness: 0 }),
+} : null;
+// which buildings get built facades: the POI and VLM-described fronts (the corridor); the
+// OSM residential blocks keep the painted decal walls
+function solidFacades(bld) {
+  const s = bld.style || {};
+  return matsReady && bld.height >= 3 && ((bld.pois && bld.pois.length > 0) || s.source === 'vlm' || s.source === 'vlm_wikidata');
+}
 const tW = terrain.width, tH = terrain.height;
 const baseElev = terrain.base_elevation;
 const cosLat = Math.cos(terrain.ref_lat * Math.PI / 180);
@@ -320,7 +368,9 @@ function hexToColor(hex) {
 }
 
 // Procedural window texture
-function createProceduralFacade(style, wall, isPrimary, bldId) {
+function createProceduralFacade(style, wall, isPrimary, bldId, decalOnly) {
+  // decalOnly: no base wall or masonry pattern; only openings, trims, signage and shading on a
+  // transparent canvas, composited over the baked surface (src/decal.js)
   isPrimary = isPrimary || false;
   const width = wall.length;
   const height = wall.height;
@@ -353,6 +403,7 @@ function createProceduralFacade(style, wall, isPrimary, bldId) {
     return false;
   }
 
+  if (!decalOnly) {
   // === BASE WALL === (Mapbox building fill #D9D3C8 for generic)
   ctx.fillStyle = style.color || '#D9D3C8';
   ctx.fillRect(0, 0, W, H);
@@ -410,6 +461,7 @@ function createProceduralFacade(style, wall, isPrimary, bldId) {
     }
     ctx.globalAlpha = 1.0;
   }
+  } // !decalOnly
 
   // === ART DECO TREATMENT === (Boulder Theater mural — front facade only)
   if (style.arch_style === 'art_deco' && bldId === '9022e165-3bc1-48c6-a382-4cfc8d5eb9fe' && isPrimary) {
@@ -998,6 +1050,27 @@ function addWallDepth(bld, group, style, mode) {
 let buildingGroups = [];
 let currentMode = 'textured';
 
+// Library material for a VLM material word, and the building's colour as a tint on it
+function libraryNameFor(style) {
+  const m = style.material || 'brick';
+  if (m === 'stone' || m === 'brick_sandstone' || m === 'sandstone') return 'sandstone';
+  if (m === 'painted_brick') return 'brick.painted';
+  if (m === 'stucco' || m === 'concrete' || m === 'siding' || m === 'wood' || m === 'metal' || m === 'glass') return 'stucco';
+  return 'brick';
+}
+const _tint = new THREE.Color();
+function wallTint(style, libName) {
+  // the VLM hex as a ratio to the recipe's mean albedo, pulled part way to neutral: the hex
+  // colours are far more saturated than the photographs (facades there sit at saturation
+  // 0.13-0.41), and a tint compounds with the bake's own colour
+  const meta = materials.meta[libName] || {};
+  const mean = meta.albedo || [0.5, 0.5, 0.5];
+  const c = new THREE.Color(style.color || '#8b5a3c');
+  const k = meta.paint ? 0.7 : 0.4;
+  const f = (v, m) => Math.pow(THREE.MathUtils.clamp(v / m, 0.35, 2.5), k);
+  return _tint.setRGB(f(c.r, mean[0]), f(c.g, mean[1]), f(c.b, mean[2]), THREE.LinearSRGBColorSpace);
+}
+
 function createBuilding(bld, mode) {
   const group = new THREE.Group();
   group.userData = bld;
@@ -1065,8 +1138,15 @@ function createBuilding(bld, mode) {
 
   bld.primaryWallIdx = primaryWallIdx;   // (read by the facade= inspection view)
 
+  const solid = mode !== 'wireframe' && solidFacades(bld);
+  const fb = solid ? new FacadeBuckets() : null;
+
   for (let wallIdx = 0; wallIdx < bld.walls.length; wallIdx++) {
     const wall = bld.walls[wallIdx];
+    if (solid && wall.is_exterior && wall.length >= 3) {
+      buildWall(fb, wall, bld, style, { primary: wallIdx === primaryWallIdx, allStorefront: (bld.pois || []).length > 1 });
+      continue;
+    }
     const positions = new Float32Array(wall.vertices.flat());
     const uvs = new Float32Array(wall.uvs.flat());
 
@@ -1095,6 +1175,16 @@ function createBuilding(bld, mode) {
         color: 0xc9bdb1, roughness: 0.95, metalness: 0,
         side: THREE.DoubleSide
       });
+    } else if ((mode === 'textured' || mode === 'color') && matsReady) {
+      // baked masonry under the facade decal; wall UVs in metres (u along, v up)
+      const facadeTex = createProceduralFacade(style, wall, wallIdx === primaryWallIdx, bld.id, true);
+      facadeTex.anisotropy = 8;
+      const libName = libraryNameFor(style);
+      material = materials.get(libName).clone();
+      material.side = THREE.DoubleSide;
+      material.color.copy(wallTint(style, libName));
+      attachDecal(material, facadeTex, new THREE.Vector2(wall.length, wall.height), 0.35);
+      for (let i = 0; i < uvs.length; i += 2) { uvs[i] *= wall.length; uvs[i + 1] *= wall.height; }
     } else if (mode === 'textured' || mode === 'color') {
       const facadeTex = createProceduralFacade(style, wall, wallIdx === primaryWallIdx, bld.id);
       material = new THREE.MeshStandardMaterial({
@@ -1162,8 +1252,24 @@ function createBuilding(bld, mode) {
     }
   }
 
-  // Arnis-inspired wall depth features
-  addWallDepth(bld, group, style, mode);
+  if (solid) {
+    const libName = libraryNameFor(style);
+    const wallMat = materials.get(libName).clone();
+    wallMat.color.copy(wallTint(style, libName));
+    const trimMat = materials.get('sandstone').clone();
+    if (style.accent) {
+      // a described accent colour paints the trim; otherwise the trim is the stone
+      const a = new THREE.Color(style.accent);
+      const meta = materials.meta.sandstone;
+      const f = (v, m) => Math.pow(THREE.MathUtils.clamp(v / m, 0.3, 2.2), 0.7);
+      trimMat.color.setRGB(f(a.r, meta.albedo[0]), f(a.g, meta.albedo[1]), f(a.b, meta.albedo[2]), THREE.LinearSRGBColorSpace);
+    }
+    const frameMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(style.accent || '#2b2b2b'), roughness: 0.5, metalness: 0.05 });
+    for (const m of fb.meshes({ wall: wallMat, trim: trimMat, frame: frameMat, glass: facadeShared.glass, dark: facadeShared.dark, door: facadeShared.door })) group.add(m);
+  } else {
+    // Arnis-inspired wall depth features
+    addWallDepth(bld, group, style, mode);
+  }
 
   // Roof — flat or pitched based on style.roof_type
   let roofMat;
@@ -1939,11 +2045,19 @@ function triangulatePoly(pts) {
     pedestrian: new THREE.Color(0x8b3a2a), service:    new THREE.Color(0x505050),
   };
   const defRC = new THREE.Color(0x888888);
-  const rVerts = [], rCols = [];
+  // with the baked library: pavers on the mall (UVs along it), concrete on footways, asphalt
+  // elsewhere, one mesh per surface; otherwise the flat vertex-coloured ribbon as before
+  const surfaceOf = (cls) => cls === 'pedestrian' ? 'pavers' : cls === 'footway' ? 'concrete' : 'asphalt';
+  const MALL_ANGLE = 15.1 * Math.PI / 180;      // the mall's bearing from east, for the paver courses
+  const ca = Math.cos(MALL_ANGLE), sa = Math.sin(MALL_ANGLE);
+  const buckets = {};
   for (const road of (data.roads || [])) {
     if (road.points.length < 2) continue;
     const hw = roadHalfW[road.class] ?? 1.25;
     const rc = roadRGB[road.class] ?? defRC;
+    const key = matsReady ? surfaceOf(road.class) : 'flat';
+    const b = buckets[key] || (buckets[key] = { verts: [], cols: [], uvs: [] });
+    const uvOf = key === 'pavers' ? (x, z) => [x * ca + z * sa, -x * sa + z * ca] : (x, z) => [x, z];
     for (let i = 0; i < road.points.length - 1; i++) {
       const [x0, z0] = road.points[i], [x1, z1] = road.points[i + 1];
       const dx = x1 - x0, dz = z1 - z0, len = Math.sqrt(dx*dx + dz*dz);
@@ -1951,17 +2065,26 @@ function triangulatePoly(pts) {
       const nx = -dz / len * hw, nz = dx / len * hw;
       const y0t = getTerrainElevation(x0, z0) + 0.5;
       const y1t = getTerrainElevation(x1, z1) + 0.5;
-      rVerts.push(x0+nx, y0t, z0+nz, x1+nx, y1t, z1+nz, x1-nx, y1t, z1-nz,
-                  x0+nx, y0t, z0+nz, x1-nx, y1t, z1-nz, x0-nx, y0t, z0-nz);
-      for (let v = 0; v < 6; v++) rCols.push(rc.r, rc.g, rc.b);
+      const quad = [[x0+nx, y0t, z0+nz], [x1+nx, y1t, z1+nz], [x1-nx, y1t, z1-nz], [x0-nx, y0t, z0-nz]];
+      for (const k of [0, 1, 2, 0, 2, 3]) {
+        const p = quad[k];
+        b.verts.push(p[0], p[1], p[2]);
+        b.cols.push(rc.r, rc.g, rc.b);
+        b.uvs.push(...uvOf(p[0], p[2]));
+      }
     }
   }
-  if (rVerts.length > 0) {
+  for (const [key, b] of Object.entries(buckets)) {
+    if (b.verts.length === 0) continue;
     const rGeom = new THREE.BufferGeometry();
-    rGeom.setAttribute('position', new THREE.Float32BufferAttribute(rVerts, 3));
-    rGeom.setAttribute('color',    new THREE.Float32BufferAttribute(rCols, 3));
+    rGeom.setAttribute('position', new THREE.Float32BufferAttribute(b.verts, 3));
+    rGeom.setAttribute('color',    new THREE.Float32BufferAttribute(b.cols, 3));
+    rGeom.setAttribute('uv',       new THREE.Float32BufferAttribute(b.uvs, 2));
     rGeom.computeVertexNormals();
-    const rMesh = new THREE.Mesh(rGeom, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }));
+    const rMat = key === 'flat'
+      ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, side: THREE.DoubleSide })
+      : materials.get(key, { side: 'double' });
+    const rMesh = new THREE.Mesh(rGeom, rMat);
     rMesh.receiveShadow = true;
     scene.add(rMesh);
   }
@@ -2335,7 +2458,9 @@ window.__app = {
       calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
       geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures,
       programs: renderer.info.programs ? renderer.info.programs.length : 0,
-      buildings: data.buildings.length, mode: currentMode,
+      buildings: data.buildings.length, mode: currentMode, lit: LIT, mat: MAT && matsReady,
+      sun: env ? { elevation: +(env.state.elevation * 180 / Math.PI).toFixed(1), azimuth: +(env.state.azimuth * 180 / Math.PI).toFixed(1), exposure: +env.state.exposure.toFixed(3), date: env.state.date, hour: env.state.hour } : null,
+      bake: materials.stats.bake ? { ms: Math.round(materials.stats.bake.totalMs), textureMB: materials.stats.textureMB } : null,
       camera: [camera.position.x, camera.position.y, camera.position.z, controls.target.x, controls.target.y, controls.target.z].map(n => +n.toFixed(2)),
     };
   },
@@ -2396,6 +2521,7 @@ function animate() {
   if (frameCount > 0) { frameTimes.push(t - lastFrameT); if (frameTimes.length > 240) frameTimes.shift(); }
   lastFrameT = t;
   controls.update();
+  if (env) env.update(camera);
   renderer.render(scene, camera);
   if (++frameCount === 5) window.__ready = true;
 }

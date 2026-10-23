@@ -138,6 +138,9 @@ def fmt(v):
 def cmd_stats(a):
     files = [f for p in a.images for f in sorted(glob.glob(p)) or [p]]
     refs = [f for p in (a.ref or []) for f in sorted(glob.glob(p)) or [p]]
+    if a.ref_json:   # the kept photos of a reference envelope (tools/envelope.py)
+        root = os.path.dirname(os.path.dirname(os.path.abspath(a.ref_json)))
+        refs += [os.path.join(root, f) for f in json.load(open(a.ref_json))["kept_files"]]
     R = [measure(f, a) for f in files]
     F = [measure(f, a, a.ref_regions) for f in refs]
     if a.json:
@@ -249,6 +252,7 @@ def main():
     s = sub.add_parser("stats")
     s.add_argument("images", nargs="+")
     s.add_argument("--ref", nargs="+", help="reference photos (globs ok)")
+    s.add_argument("--ref-json", default=None, help="a reference envelope JSON whose kept_files are the references")
     s.add_argument("--region", action="append", help="name=x0,y0,x1,y1 (repeatable; the first is the EV base)")
     s.add_argument("--ref-regions", action="store_true",
                    help="measure the regions on the references too (only meaningful when they share the composition)")
