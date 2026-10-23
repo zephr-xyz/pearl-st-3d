@@ -127,6 +127,28 @@ const tooltip = document.getElementById('tooltip');
 const textureLoader = new THREE.TextureLoader();
 textureLoader.crossOrigin = 'anonymous';
 
+// URL parameters (see tools/README.md): view=, facade=, fov=, mode=, capture=1, seed=
+const PARAMS = new URLSearchParams(location.search);
+const CAPTURE = PARAMS.get('capture') === '1';
+const SEED = PARAMS.get('seed') || 'pearl';
+
+// Deterministic randomness: every visual draw comes from a seeded stream named by what it
+// decorates, so two loads (or two commits) differ only in rendering, never in content.
+function hashStr(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function makeRng(tag) {
+  let a = hashStr(SEED + '|' + tag);
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
 const loadingOverlay = document.getElementById('loading-overlay');
 const loadingFill = document.getElementById('loading-bar-fill');
 const loadingStatus = document.getElementById('loading-status');
@@ -139,7 +161,7 @@ function setProgress(pct, msg) {
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xd4eaf7, 2000, 16000);
 
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 8000);
+const camera = new THREE.PerspectiveCamera(+PARAMS.get('fov') || 45, window.innerWidth / window.innerHeight, 0.5, 8000);
 camera.position.set(180, 40, -120);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -158,6 +180,12 @@ controls.dampingFactor = 0.05;
 controls.maxPolarAngle = Math.PI / 2.05;
 controls.minDistance = 5;
 controls.maxDistance = 3000;
+if (CAPTURE) {
+  // capture mode: no interface, no eased camera, so a frame is a function of the URL alone
+  controls.enableDamping = false;
+  document.getElementById('panel').style.display = 'none';
+  document.getElementById('controls').style.display = 'none';
+}
 
 // Lighting — soft, even illumination (Mapbox-style flat clarity)
 const ambient = new THREE.HemisphereLight(0xffffff, 0xe8e0d8, 0.9);
@@ -198,12 +226,13 @@ skyCtx.fillStyle = grad;
 skyCtx.fillRect(0, 0, 1024, 512);
 
 // Procedural clouds
+const skyRng = makeRng('sky');
 skyCtx.globalAlpha = 0.6;
 for (let i = 0; i < 40; i++) {
-  const cx = Math.random() * 1024;
-  const cy = 120 + Math.random() * 200;
-  const w = 60 + Math.random() * 150;
-  const h = 20 + Math.random() * 40;
+  const cx = skyRng() * 1024;
+  const cy = 120 + skyRng() * 200;
+  const w = 60 + skyRng() * 150;
+  const h = 20 + skyRng() * 40;
   const cloudGrad = skyCtx.createRadialGradient(cx, cy, 0, cx, cy, w/2);
   cloudGrad.addColorStop(0, 'rgba(255,255,255,0.8)');
   cloudGrad.addColorStop(0.5, 'rgba(255,255,255,0.4)');
@@ -212,9 +241,9 @@ for (let i = 0; i < 40; i++) {
   skyCtx.fillRect(cx - w/2, cy - h/2, w, h);
   // Puff clusters
   for (let p = 0; p < 3; p++) {
-    const px = cx + (Math.random() - 0.5) * w * 0.6;
-    const py = cy + (Math.random() - 0.5) * h * 0.8;
-    const pr = 15 + Math.random() * 30;
+    const px = cx + (skyRng() - 0.5) * w * 0.6;
+    const py = cy + (skyRng() - 0.5) * h * 0.8;
+    const pr = 15 + skyRng() * 30;
     const pGrad = skyCtx.createRadialGradient(px, py, 0, px, py, pr);
     pGrad.addColorStop(0, 'rgba(255,255,255,0.7)');
     pGrad.addColorStop(1, 'rgba(255,255,255,0)');
@@ -296,6 +325,8 @@ function createProceduralFacade(style, wall, isPrimary, bldId) {
   const width = wall.length;
   const height = wall.height;
   const entrances = wall.entrances || [];
+  // one stream per wall: the same wall paints the same bricks on every load
+  const frng = makeRng('facade|' + bldId + '|' + (wall.edge_index ?? 0) + '|' + Math.round(wall.bearing || 0));
 
   const W = 512;
   const H = Math.round(W * (height / Math.max(width, 1)));
@@ -348,7 +379,7 @@ function createProceduralFacade(style, wall, isPrimary, bldId) {
       const rowIdx = Math.floor(y / (brickH + mortarW));
       const rowOff = (rowIdx % 2) * (brickW / 2);
       for (let x = rowOff; x < W; x += brickW + mortarW) {
-        const shade = Math.random();
+        const shade = frng();
         ctx.fillStyle = shade > 0.6 ? '#000' : (shade > 0.3 ? '#fff' : '#804020');
         ctx.fillRect(x + mortarW, y + mortarW, brickW - 1, brickH - 1);
       }
@@ -361,7 +392,7 @@ function createProceduralFacade(style, wall, isPrimary, bldId) {
     for (let y = 0; y < H; y += stoneH + 2) {
       const rowOff = (Math.floor(y / (stoneH + 2)) % 2) * (stoneW * 0.4);
       for (let x = rowOff - stoneW; x < W + stoneW; x += stoneW + 2) {
-        ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
+        ctx.fillStyle = frng() > 0.5 ? '#000' : '#fff';
         ctx.fillRect(x, y, stoneW, stoneH);
       }
     }
@@ -373,9 +404,9 @@ function createProceduralFacade(style, wall, isPrimary, bldId) {
   } else if (style.material === 'stucco' || style.material === 'painted_brick' || style.material === 'siding') {
     ctx.globalAlpha = 0.04;
     for (let i = 0; i < 400; i++) {
-      ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
-      const s = Math.random() * 3 + 1;
-      ctx.fillRect(Math.random() * W, Math.random() * H, s, s);
+      ctx.fillStyle = frng() > 0.5 ? '#000' : '#fff';
+      const s = frng() * 3 + 1;
+      ctx.fillRect(frng() * W, frng() * H, s, s);
     }
     ctx.globalAlpha = 1.0;
   }
@@ -1032,6 +1063,8 @@ function createBuilding(bld, mode) {
     }
   }
 
+  bld.primaryWallIdx = primaryWallIdx;   // (read by the facade= inspection view)
+
   for (let wallIdx = 0; wallIdx < bld.walls.length; wallIdx++) {
     const wall = bld.walls[wallIdx];
     const positions = new Float32Array(wall.vertices.flat());
@@ -1664,7 +1697,14 @@ function rebuildScene(mode) {
 }
 
 setProgress(75, 'Rendering facades...');
-rebuildScene('textured');
+{
+  const m = PARAMS.get('mode');
+  const initialMode = (m === 'color' || m === 'wireframe') ? m : 'textured';
+  rebuildScene(initialMode);
+  currentMode = initialMode;
+  document.querySelectorAll('#controls button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + initialMode).classList.add('active');
+}
 
 // Signs — procedurally rendered from SNIP-detected text
 setProgress(85, 'Loading signs...');
@@ -1704,6 +1744,7 @@ console.log('Signs loaded:', signsData.length);
 
     const palette = signPalettes[hashName(name) % signPalettes.length];
     const isLight = palette.bg.charAt(1) > '9';
+    const srng = makeRng('sign|' + name);
 
     // Background panel with gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
@@ -1716,7 +1757,7 @@ console.log('Signs loaded:', signsData.length);
     ctx.globalAlpha = 0.05;
     for (let i = 0; i < 150; i++) {
       ctx.fillStyle = isLight ? '#000' : '#fff';
-      ctx.fillRect(Math.random() * W, Math.random() * H, Math.random() * 4, 1);
+      ctx.fillRect(srng() * W, srng() * H, srng() * 4, 1);
     }
     ctx.globalAlpha = 1.0;
 
@@ -2227,19 +2268,78 @@ window.jumpTo = (px, py, pz, tx, ty, tz) => {
   controls.update();
 };
 
-// Camera presets
-document.getElementById('btn-street').addEventListener('click', () => {
-  camera.position.set(0, 2.5, 35);
-  controls.target.set(0, 4, 0);
-});
-document.getElementById('btn-birds').addEventListener('click', () => {
-  camera.position.set(0, 180, 20);
-  controls.target.set(0, 0, 0);
-});
-document.getElementById('btn-orbit').addEventListener('click', () => {
-  camera.position.set(180, 40, -120);
-  controls.target.set(-10, 4, -20);
-});
+// ─── Standard views ──────────────────────────────────────────────────────────
+// Named views (URL view=<name>), a free view (view=px,py,pz,tx,ty,tz, scene metres) and
+// facade views (facade=<building id prefix>[,distance]) that stand across the street from a
+// building's primary wall. Captures and A/B comparisons always use these, never a hand-placed
+// camera. Scene coordinates: x east, z north, y up; the mall runs ENE from 13th (x ≈ -260)
+// to 15th (x ≈ -45).
+const EYE = 1.7;
+function standing(from, to) {
+  return [[from[0], getTerrainElevation(from[0], from[1]) + EYE, from[1]],
+          [to[0], getTerrainElevation(to[0], to[1]) + EYE, to[1]]];
+}
+const VIEWS = {
+  orbit:  () => [[180, 40, -120], [-10, 4, -20]],      // the page's default
+  birds:  () => [[0, 180, 20], [0, 0, 0]],
+  street: () => [[0, 2.5, 35], [0, 4, 0]],
+  mall_e: () => standing([-250, -116], [-43, -60]),    // on the mall near 13th, looking east
+  mall_mid_e: () => standing([-180, -97], [-43, -60]), // mid-mall near 14th, looking east
+  mall_w: () => standing([-60, -65], [-250, -116]),    // near 15th, looking west
+};
+function facadeView(idPrefix, dist) {
+  const bld = data.buildings.find(b => b.id.startsWith(idPrefix));
+  if (!bld) return null;
+  const w = bld.walls[bld.primaryWallIdx >= 0 ? bld.primaryWallIdx : 0];
+  const v = w.vertices;
+  const x0 = v[0][0], z0 = v[0][2], x1 = v[1][0], z1 = v[1][2];
+  const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz);
+  let nx = -dz / len, nz = dx / len;
+  const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+  const cx = bld.centroid_m[0], cz = bld.centroid_m[1];
+  if ((mx + nx - cx) ** 2 + (mz + nz - cz) ** 2 < (mx - cx) ** 2 + (mz - cz) ** 2) { nx = -nx; nz = -nz; }
+  const d = dist || Math.min(40, Math.max(10, len * 0.65));
+  const gy = getTerrainElevation(cx, cz);
+  return [[mx + nx * d, gy + EYE, mz + nz * d], [mx, gy + Math.min(w.height * 0.45, 6), mz]];
+}
+function setView(pos, target) {
+  controls.maxPolarAngle = Math.PI / 2 + 0.05;   // eye-height views look level
+  camera.position.set(pos[0], pos[1], pos[2]);
+  controls.target.set(target[0], target[1], target[2]);
+  controls.update();
+}
+function applyUrlView() {
+  const v = PARAMS.get('view'), f = PARAMS.get('facade');
+  let vt = null;
+  if (f) { const [id, dist] = f.split(','); vt = facadeView(id, dist ? +dist : 0); }
+  else if (v && VIEWS[v]) vt = VIEWS[v]();
+  else if (v && v.split(',').length === 6) { const n = v.split(',').map(Number); vt = [n.slice(0, 3), n.slice(3)]; }
+  if (vt) setView(vt[0], vt[1]);
+  return !!vt;
+}
+document.getElementById('btn-street').addEventListener('click', () => setView(...VIEWS.street()));
+document.getElementById('btn-birds').addEventListener('click', () => setView(...VIEWS.birds()));
+document.getElementById('btn-orbit').addEventListener('click', () => setView(...VIEWS.orbit()));
+applyUrlView();
+
+// Hooks for tools/shoot.py: window.__ready once frames are being drawn, window.__app.stats()
+let frameCount = 0, lastFrameT = performance.now();
+const frameTimes = [];
+window.__app = {
+  camera, controls, scene, renderer, data, VIEWS, setView, facadeView,
+  stats() {
+    const s = frameTimes.slice().sort((a, b) => a - b);
+    const q = (p) => s.length ? s[Math.min(s.length - 1, Math.floor(p * s.length))] : 0;
+    return {
+      frames: frameCount, frameMs: +q(0.5).toFixed(2), frameMsP95: +q(0.95).toFixed(2),
+      calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
+      geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures,
+      programs: renderer.info.programs ? renderer.info.programs.length : 0,
+      buildings: data.buildings.length, mode: currentMode,
+      camera: [camera.position.x, camera.position.y, camera.position.z, controls.target.x, controls.target.y, controls.target.z].map(n => +n.toFixed(2)),
+    };
+  },
+};
 
 // Raycasting
 const raycaster = new THREE.Raycaster();
@@ -2287,12 +2387,17 @@ window.addEventListener('resize', () => {
 });
 
 setProgress(100, 'Ready');
-setTimeout(() => loadingOverlay.classList.add('hidden'), 300);
+if (CAPTURE) loadingOverlay.style.display = 'none';
+else setTimeout(() => loadingOverlay.classList.add('hidden'), 300);
 
 function animate() {
   requestAnimationFrame(animate);
+  const t = performance.now();
+  if (frameCount > 0) { frameTimes.push(t - lastFrameT); if (frameTimes.length > 240) frameTimes.shift(); }
+  lastFrameT = t;
   controls.update();
   renderer.render(scene, camera);
+  if (++frameCount === 5) window.__ready = true;
 }
 animate();
 </script>

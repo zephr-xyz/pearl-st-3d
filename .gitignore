@@ -4,3 +4,6 @@ __pycache__/
 node_modules/
 .env
 output/style_cache/
+# tool scratch (screenshots, browser profiles) and the reference photos (third-party, fetched)
+.work/
+reference/
