@@ -82,6 +82,21 @@ export const LIBRARY = {
     vc: 'tint',
     meta: { albedo: [0.40, 0.39, 0.37], slab: [1.5, 1.5], uv: 'metres, any orientation' },
   },
+  // trunks and branches (the vegetation module asks for these by name)
+  'bark': {
+    props: { roughness: 1 },
+    bake: 'bark',
+    surf: { macro: { f1: 1 / 1.5, f2: 1 / 4, albedo: 0.08, rough: 0.04 } },
+    vc: 'tint',
+    meta: { uv: 'u around the trunk, v up (m), tile 0.8 × 1.6 m' },
+  },
+  'bark.smooth': {
+    props: { roughness: 1 },
+    bake: 'barksmooth',
+    surf: { macro: { f1: 1 / 1.5, f2: 1 / 4, albedo: 0.08, rough: 0.04 } },
+    vc: 'tint',
+    meta: { uv: 'as bark' },
+  },
   'asphalt': {
     props: { roughness: 1 },
     bake: 'asphalt',

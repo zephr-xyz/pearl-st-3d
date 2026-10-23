@@ -281,4 +281,6 @@ void surface(vec2 m, inout Surf s) {
 `,
 };
 
-export const RECIPES = Object.fromEntries([detail, macro, brick, pavers, sandstone, stucco, concrete, asphalt].map((r) => [r.name, r]));
+import { bark, barksmooth } from './recipes_bark.js';
+
+export const RECIPES = Object.fromEntries([detail, macro, brick, pavers, sandstone, stucco, concrete, asphalt, bark, barksmooth].map((r) => [r.name, r]));

@@ -126,6 +126,7 @@ import { attachDecal } from './src/decal.js';
 import { createEnvironment } from './src/env.js';
 import { FacadeBuckets, buildWall } from './src/facades.js';
 import { createPost } from './src/post.js';
+import { makeParams, makeRouteLayout, vegetation } from './src/pearlWorld.js';
 
 const canvas = document.getElementById('canvas');
 const tooltip = document.getElementById('tooltip');
@@ -320,6 +321,9 @@ const facadeShared = matsReady ? {
   dark: new THREE.MeshStandardMaterial({ color: 0x14110e, roughness: 0.92, metalness: 0 }),
   door: new THREE.MeshStandardMaterial({ color: 0x2a1b10, roughness: 0.55, metalness: 0 }),
 } : null;
+// street content from 3DSceneRenderer: grown trees (content=0 keeps the old blob trees)
+const CONTENT = matsReady && PARAMS.get('content') !== '0';
+const app = { THREE, renderer, scene, camera, canvas, params: makeParams(location.search), materials, post, frame: 0, ready: false, startS: 0, systems: {} };
 // which buildings get built facades: the POI and VLM-described fronts (the corridor); the
 // OSM residential blocks keep the painted decal walls
 function solidFacades(bld) {
@@ -1151,7 +1155,13 @@ function createBuilding(bld, mode) {
   for (let wallIdx = 0; wallIdx < bld.walls.length; wallIdx++) {
     const wall = bld.walls[wallIdx];
     if (solid && wall.is_exterior && wall.length >= 3) {
-      buildWall(fb, wall, bld, style, { primary: wallIdx === primaryWallIdx, allStorefront: (bld.pois || []).length > 1 });
+      const h = _hashId(bld.id + '/' + wallIdx);
+      const signName = (bld.pois && bld.pois[0]) || (style.signage && style.signage.text) || null;
+      buildWall(fb, wall, bld, style, {
+        primary: wallIdx === primaryWallIdx, allStorefront: (bld.pois || []).length > 1,
+        signText: signName, signColors: { board: style.accent || '#2b2b2b', text: (style.signage && style.signage.color) || '#f2e9d2' },
+        downspout: h % 3 === 0 ? 1 : h % 3 === 1 ? -1 : 0,
+      });
       continue;
     }
     const positions = new Float32Array(wall.vertices.flat());
@@ -1206,8 +1216,8 @@ function createBuilding(bld, mode) {
     group.add(mesh);
   }
 
-  // 3D Awnings
-  if (mode !== 'wireframe' && style.awning) {
+  // 3D Awnings (the built facades carry their own canvas awnings)
+  if (mode !== 'wireframe' && style.awning && !solid) {
     const awningColor = new THREE.Color(style.awning.color);
     const awningDepth = 1.8;
     const awningDroop = 0.4;
@@ -1272,7 +1282,8 @@ function createBuilding(bld, mode) {
       trimMat.color.setRGB(f(a.r, meta.albedo[0]), f(a.g, meta.albedo[1]), f(a.b, meta.albedo[2]), THREE.LinearSRGBColorSpace);
     }
     const frameMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(style.accent || '#2b2b2b'), roughness: 0.5, metalness: 0.05 });
-    for (const m of fb.meshes({ wall: wallMat, trim: trimMat, frame: frameMat, glass: facadeShared.glass, dark: facadeShared.dark, door: facadeShared.door })) group.add(m);
+    const fabricMat = new THREE.MeshStandardMaterial({ color: new THREE.Color((style.awning && style.awning.color) || '#8a2a22'), roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+    for (const m of fb.meshes({ wall: wallMat, trim: trimMat, frame: frameMat, fabric: fabricMat, glass: facadeShared.glass, dark: facadeShared.dark, door: facadeShared.door })) group.add(m);
   } else {
     // Arnis-inspired wall depth features
     addWallDepth(bld, group, style, mode);
@@ -1819,6 +1830,54 @@ setProgress(75, 'Rendering facades...');
   document.getElementById('btn-' + initialMode).classList.add('active');
 }
 
+// trees
+let veg = null;
+const mallLines = (data.roads || []).filter(r => r.class === 'pedestrian' && /Pearl/.test(r.name || '')).map(r => r.points);
+function distToMall(x, z) {
+  let best = Infinity;
+  for (const line of mallLines) for (let i = 0; i < line.length - 1; i++) {
+    const [ax, az] = line[i], [bx, bz] = line[i + 1];
+    const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
+    best = Math.min(best, Math.hypot(x - ax - t * dx, z - az - t * dz));
+  }
+  return best;
+}
+const pavingY = (x, z) => getTerrainElevation(x, z) + (distToMall(x, z) < 14 ? 0.5 : 0);   // (the roads sit 0.5 m above the terrain)
+if (CONTENT) {
+  setProgress(78, 'Growing trees...');
+  const treePts = (data.trees || []).map(t => ({ x: t.x, z: t.y, y: pavingY(t.x, t.y) }));
+  // cast-iron tree grates in the mall paving under the trees that stand in it
+  {
+    const grateMat = new THREE.MeshStandardMaterial({ color: 0x2a2724, roughness: 0.55, metalness: 0.6 });
+    const grateGeo = new THREE.PlaneGeometry(1.4, 1.4);
+    grateGeo.rotateX(-Math.PI / 2);
+    const im = new THREE.InstancedMesh(grateGeo, grateMat, treePts.length);
+    const dm = new THREE.Object3D();
+    let n = 0;
+    for (const t of treePts) {
+      if (distToMall(t.x, t.z) >= 14) continue;
+      dm.position.set(t.x, t.y + 0.012, t.z);
+      dm.rotation.set(0, 15.1 * Math.PI / 180, 0);
+      dm.updateMatrix();
+      im.setMatrixAt(n++, dm.matrix);
+    }
+    im.count = n;
+    im.receiveShadow = true;
+    scene.add(im);
+  }
+  const { route, layout } = makeRouteLayout(treePts, 7);
+  app.route = route; app.layout = layout;
+  materials.register('stone.smooth', materials.get('sandstone'));   // (tree-bed kerbs ask for it by the renderer's name)
+  try {
+    await vegetation.init(app);
+    const marker = vegetation.build({ index: 0, lod: 0 }, app);
+    if (marker) scene.add(marker);
+    await Promise.race([vegetation.atlasReady, new Promise(r => setTimeout(r, 20000))]);
+    veg = vegetation;
+  } catch (e) { console.error('[vegetation] failed', e); }
+}
+
 // Signs — procedurally rendered from SNIP-detected text
 setProgress(85, 'Loading signs...');
 const signsResp = await fetch('signs.json');
@@ -2045,7 +2104,12 @@ function triangulatePoly(pts) {
 
 // Roads — single merged vertex-colored mesh (1 draw call instead of ~1,147)
 {
-  const roadHalfW = { tertiary: 2.5, residential: 2, primary: 3, pedestrian: 3, footway: 1, service: 1.25 };
+  // half widths: with the baked surfaces the mall is paved building to building (about 22 m) and
+  // the streets take their real carriageway widths with a concrete sidewalk band on each side
+  const roadHalfW = matsReady
+    ? { tertiary: 4.5, residential: 4, primary: 5.5, pedestrian: 11, footway: 1.2, service: 2 }
+    : { tertiary: 2.5, residential: 2, primary: 3, pedestrian: 3, footway: 1, service: 1.25 };
+  const sidewalkW = matsReady ? { tertiary: 2.2, residential: 1.8, primary: 2.5 } : {};
   const roadRGB = {
     tertiary:   new THREE.Color(0x404040), residential: new THREE.Color(0x484848),
     primary:    new THREE.Color(0x383838), footway:     new THREE.Color(0x999490),
@@ -2063,22 +2127,32 @@ function triangulatePoly(pts) {
     const hw = roadHalfW[road.class] ?? 1.25;
     const rc = roadRGB[road.class] ?? defRC;
     const key = matsReady ? surfaceOf(road.class) : 'flat';
-    const b = buckets[key] || (buckets[key] = { verts: [], cols: [], uvs: [] });
-    const uvOf = key === 'pavers' ? (x, z) => [x * ca + z * sa, -x * sa + z * ca] : (x, z) => [x, z];
-    for (let i = 0; i < road.points.length - 1; i++) {
-      const [x0, z0] = road.points[i], [x1, z1] = road.points[i + 1];
-      const dx = x1 - x0, dz = z1 - z0, len = Math.sqrt(dx*dx + dz*dz);
-      if (len < 0.3) continue;
-      const nx = -dz / len * hw, nz = dx / len * hw;
-      const y0t = getTerrainElevation(x0, z0) + 0.5;
-      const y1t = getTerrainElevation(x1, z1) + 0.5;
-      const quad = [[x0+nx, y0t, z0+nz], [x1+nx, y1t, z1+nz], [x1-nx, y1t, z1-nz], [x0-nx, y0t, z0-nz]];
-      for (const k of [0, 1, 2, 0, 2, 3]) {
-        const p = quad[k];
-        b.verts.push(p[0], p[1], p[2]);
-        b.cols.push(rc.r, rc.g, rc.b);
-        b.uvs.push(...uvOf(p[0], p[2]));
+    const sw = sidewalkW[road.class] || 0;
+    const ribbon = (bucketKey, offA, offB, lift) => {
+      // a strip between lateral offsets offA..offB (m, + to the left of travel)
+      const b = buckets[bucketKey] || (buckets[bucketKey] = { verts: [], cols: [], uvs: [] });
+      const uvOf = bucketKey === 'pavers' ? (x, z) => [x * ca + z * sa, -x * sa + z * ca] : (x, z) => [x, z];
+      for (let i = 0; i < road.points.length - 1; i++) {
+        const [x0, z0] = road.points[i], [x1, z1] = road.points[i + 1];
+        const dx = x1 - x0, dz = z1 - z0, len = Math.sqrt(dx*dx + dz*dz);
+        if (len < 0.3) continue;
+        const nx = -dz / len, nz = dx / len;
+        const y0t = getTerrainElevation(x0, z0) + 0.5 + lift;
+        const y1t = getTerrainElevation(x1, z1) + 0.5 + lift;
+        const quad = [[x0+nx*offA, y0t, z0+nz*offA], [x1+nx*offA, y1t, z1+nz*offA], [x1+nx*offB, y1t, z1+nz*offB], [x0+nx*offB, y0t, z0+nz*offB]];
+        for (const k of [0, 1, 2, 0, 2, 3]) {
+          const p = quad[k];
+          b.verts.push(p[0], p[1], p[2]);
+          b.cols.push(rc.r, rc.g, rc.b);
+          b.uvs.push(...uvOf(p[0], p[2]));
+        }
       }
+    };
+    ribbon(key, hw, -hw, 0);
+    if (sw > 0) {
+      // sidewalks a kerb's height above the carriageway, with a kerb face
+      ribbon('concrete', hw, hw + sw, 0.12);
+      ribbon('concrete', -hw - sw, -hw, 0.12);
     }
   }
   for (const [key, b] of Object.entries(buckets)) {
@@ -2100,7 +2174,7 @@ function triangulatePoly(pts) {
 
 
 // Trees — InstancedMesh (7 draw calls instead of ~600)
-{
+if (!CONTENT) {
   const trees = data.trees || [];
   const canopyColHex = [0x7ac07a, 0x6db86d, 0x80c880, 0x5aaa5a, 0x70b870, 0x88cc88];
   // Pre-count clusters per canopy color
@@ -2296,7 +2370,7 @@ for (const label of (data.street_labels || [])) {
 }
 
 // Trees from OSM street furniture data
-{
+if (!CONTENT) {
   const treesResp = await fetch('trees.json').catch(() => null);
   if (treesResp && treesResp.ok) {
     const trees = await treesResp.json();
@@ -2524,14 +2598,18 @@ if (CAPTURE) loadingOverlay.style.display = 'none';
 else setTimeout(() => loadingOverlay.classList.add('hidden'), 300);
 
 renderer.info.autoReset = false;   // stats() reports every pass of a frame, not only the last
+app.ready = true;
 function animate() {
   requestAnimationFrame(animate);
   renderer.info.reset();
   const t = performance.now();
+  const dt = CAPTURE ? 1 / 60 : Math.min(0.1, Math.max(0, (t - lastFrameT) / 1000));   // (fixed steps in captures: deterministic frames)
   if (frameCount > 0) { frameTimes.push(t - lastFrameT); if (frameTimes.length > 240) frameTimes.shift(); }
   lastFrameT = t;
   controls.update();
+  app.frame = frameCount;
   if (env) env.update(camera);
+  if (veg) veg.update(dt, app);
   if (post) post.render(renderer.toneMappingExposure, CAPTURE ? 0 : frameCount);
   else renderer.render(scene, camera);
   if (++frameCount === 5) window.__ready = true;

@@ -12,7 +12,7 @@ import * as THREE from 'three';
 const Y = new THREE.Vector3(0, 1, 0);
 
 export class FacadeBuckets {
-  constructor() { this.b = new Map(); }
+  constructor() { this.b = new Map(); this.extras = []; }
   bucket(name) {
     if (!this.b.has(name)) this.b.set(name, { pos: [], nor: [], uv: [] });
     return this.b.get(name);
@@ -31,8 +31,77 @@ export class FacadeBuckets {
       m.receiveShadow = true;
       out.push(m);
     }
-    return out;
+    return out.concat(this.extras);
   }
+}
+
+/** A point of the wall frame in world space. */
+function at(F, u, v, w, out = new THREE.Vector3()) {
+  return out.copy(F.O).addScaledVector(F.T, u).addScaledVector(Y, v).addScaledVector(F.N, w);
+}
+
+/** The shop's name lettered on the fascia board: a canvas texture on a plane just proud of it. */
+function fasciaSign(F, u0, u1, v0, v1, w, text, colors) {
+  const W = 1024, H = Math.max(64, Math.round(W * (v1 - v0) / (u1 - u0)));
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = colors.board;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = colors.text; ctx.globalAlpha = 0.5; ctx.lineWidth = 3;
+  ctx.strokeRect(10, 10, W - 20, H - 20);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = colors.text;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let size = Math.round(H * 0.62);
+  ctx.font = `700 ${size}px Georgia, 'Times New Roman', serif`;
+  while (ctx.measureText(text).width > W * 0.84 && size > 12) { size -= 2; ctx.font = `700 ${size}px Georgia, 'Times New Roman', serif`; }
+  ctx.fillText(text.toUpperCase(), W / 2, H / 2 + H * 0.02);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, v1 - v0), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0.05 }));
+  at(F, (u0 + u1) / 2, (v0 + v1) / 2, w, mesh.position);
+  mesh.rotation.y = Math.atan2(F.N.x, F.N.z);
+  mesh.castShadow = false;
+  return mesh;
+}
+
+/** A sloped canvas awning over u0..u1 hung at vTop: canopy, two side cheeks and a valance. */
+function awning(bk, F, u0, u1, vTop, proj, drop) {
+  const vFront = vTop - drop;
+  quad(bk, F, [[u0, vTop, 0.02], [u1, vTop, 0.02], [u1, vFront, proj], [u0, vFront, proj]], [0, proj, drop], [[u0, 0], [u1, 0], [u1, 1.2], [u0, 1.2]]);
+  quad(bk, F, [[u0, vFront, proj], [u1, vFront, proj], [u1, vTop, 0.02], [u0, vTop, 0.02]], [0, -proj, -drop], [[u0, 1.2], [u1, 1.2], [u1, 0], [u0, 0]]);
+  // cheeks
+  quad(bk, F, [[u0, vTop, 0.02], [u0, vFront, proj], [u0, vFront - 0.28, proj], [u0, vFront - 0.28, proj]], [-1, 0, 0], [[0, 0], [proj, 0], [proj, 0.3], [proj, 0.3]]);
+  quad(bk, F, [[u1, vFront, proj], [u1, vTop, 0.02], [u1, vFront - 0.28, proj], [u1, vFront - 0.28, proj]], [1, 0, 0], [[proj, 0], [0, 0], [proj, 0.3], [proj, 0.3]]);
+  // valance with a scalloped hem: a strip plus a row of small tabs
+  quad(bk, F, [[u0, vFront - 0.22, proj], [u1, vFront - 0.22, proj], [u1, vFront, proj], [u0, vFront, proj]], [0, 0, 1], [[u0, 0], [u1, 0], [u1, 0.22], [u0, 0.22]]);
+  quad(bk, F, [[u1, vFront - 0.22, proj], [u0, vFront - 0.22, proj], [u0, vFront, proj], [u1, vFront, proj]], [0, 0, -1], [[u1, 0], [u0, 0], [u0, 0.22], [u1, 0.22]]);
+  const n = Math.max(2, Math.round((u1 - u0) / 0.3)), s = (u1 - u0) / n;
+  for (let i = 0; i < n; i++) {
+    const a = u0 + i * s, b = a + s, m = (a + b) / 2;
+    quad(bk, F, [[a + 0.02, vFront - 0.22, proj], [b - 0.02, vFront - 0.22, proj], [m + 0.03, vFront - 0.32, proj], [m - 0.03, vFront - 0.32, proj]], [0, 0, 1], [[a, 0.22], [b, 0.22], [m, 0.32], [m, 0.32]]);
+  }
+}
+
+/** Arched head over an opening: a ring of trim segments from the springing with a keystone. */
+function archHead(bk, F, o, segmental) {
+  const uc = (o.u0 + o.u1) / 2, R = (o.u1 - o.u0) / 2 + 0.06;
+  const ring = 0.14, n = 9;
+  const rise = segmental ? 0.45 : 1.0;             // segmental arches rise less than their radius
+  const vc = o.v1 - R * rise;
+  const a0 = segmental ? Math.asin(1 - rise) : 0;
+  for (let i = 0; i < n; i++) {
+    const t0 = a0 + (Math.PI - 2 * a0) * (i / n), t1 = a0 + (Math.PI - 2 * a0) * ((i + 1) / n);
+    const c0 = Math.cos(t0), s0 = Math.sin(t0), c1 = Math.cos(t1), s1 = Math.sin(t1);
+    const pts = [[uc - c0 * R, vc + s0 * R * (segmental ? 1 / rise : 1) * rise], [uc - c1 * R, vc + s1 * R],
+                 [uc - c1 * (R + ring), vc + s1 * (R + ring)], [uc - c0 * (R + ring), vc + s0 * (R + ring)]];
+    const P = pts.map(([u, v]) => [u, v]);
+    quad(bk, F, [[P[0][0], P[0][1], 0.05], [P[1][0], P[1][1], 0.05], [P[2][0], P[2][1], 0.05], [P[3][0], P[3][1], 0.05]], [0, 0, 1], P.map(([u, v]) => [u, v]));
+    quad(bk, F, [[P[3][0], P[3][1], 0.05], [P[2][0], P[2][1], 0.05], [P[2][0], P[2][1], 0], [P[3][0], P[3][1], 0]], [-(P[2][0] - uc), -(P[2][1] - vc), 0].map((x) => -x), [[0, 0], [0.1, 0], [0.1, 0.05], [0, 0.05]]);
+  }
+  box(bk, F, uc - 0.09, uc + 0.09, o.v1 + R * rise - R + ring * 0.2, o.v1 + R * rise - R + ring * 1.5, 0, 0.08, { back: true });
 }
 
 /** The frame of one wall: origin at vertex 0 at ground, tangent along it, outward normal. */
@@ -115,7 +184,11 @@ export function buildWall(buckets, wall, bld, style, opts = {}) {
   const entrances = (wall.entrances || []).map((e) => e.t * L).filter((u) => u > 1.2 && u < L - 1.2);
   const wallB = buckets.bucket('wall'), trim = buckets.bucket('trim'), glass = buckets.bucket('glass');
   const frame = buckets.bucket('frame'), door = buckets.bucket('door'), dark = buckets.bucket('dark');
+  const fabric = buckets.bucket('fabric');
   const openings = [];
+  const arched = style.windows === 'arched' || style.windows === 'romanesque_arched' || /romanesque|italianate|victorian/.test(style.arch_style || '') || style.era === 'victorian';
+  const segmental = arched && !/romanesque/.test((style.arch_style || '') + (style.windows || ''));
+  const ornate = !!(style.accent || style.arch_style || style.era || stories >= 2);
 
   // ---- upper floors: a row of windows per floor from the window grid
   const cols = style.window_grid && style.window_grid.cols > 0 ? style.window_grid.cols : Math.max(1, Math.round(L / 3.2));
@@ -185,6 +258,17 @@ export function buildWall(buckets, wall, bld, style, opts = {}) {
     }
     box(frame, F, 0, L, transom, gh - 0.05, 0, 0.06, { back: true });                     // fascia / signboard
     box(trim, F, 0, L, gh - 0.05, gh + 0.07, 0, 0.12, { back: true });                     // storefront cornice
+    // the shop's name on the fascia, and canvas awnings over the bays where the style describes one
+    if (opts.signText && isPrimary) {
+      const sw = Math.min(L * 0.6, 7), su = L / 2;
+      buckets.extras.push(fasciaSign(F, su - sw / 2, su + sw / 2, transom + 0.08, gh - 0.12, 0.075, opts.signText, opts.signColors));
+    }
+    if (style.awning) {
+      for (let i = 0; i < bays; i++) {
+        const a = piers[i] + pierW + 0.05, b = piers[i + 1] - 0.05;
+        if (b - a > 1.2) awning(fabric, F, a, b, transom - 0.02, 1.1, 0.5);
+      }
+    }
   } else {
     // doors straight in the wall at each entrance
     for (const e of entrances) openings.push({ u0: e - 0.55, u1: e + 0.55, v0: 0, v1: 2.4, kind: 'door' });
@@ -207,21 +291,40 @@ export function buildWall(buckets, wall, bld, style, opts = {}) {
       box(frame, F, mu - 0.025, mu + 0.025, o.v0, o.v1, -D + 0.04, -D + 0.09, { back: true });
       const mv = o.v0 + (o.v1 - o.v0) * 0.55;
       box(frame, F, o.u0, o.u1, mv - 0.02, mv + 0.02, -D + 0.04, -D + 0.09, { back: true });
-      // sill and lintel
+      // sill, and a lintel or an arched head with a keystone
       box(trim, F, o.u0 - 0.07, o.u1 + 0.07, o.v0 - 0.09, o.v0, -D * 0.5, 0.06, { back: true });
-      if (style.windows !== 'arched' && style.windows !== 'romanesque_arched') box(trim, F, o.u0 - 0.05, o.u1 + 0.05, o.v1, o.v1 + 0.16, 0, 0.04, { back: true });
+      if (arched) archHead(trim, F, o, segmental);
+      else box(trim, F, o.u0 - 0.05, o.u1 + 0.05, o.v1, o.v1 + 0.16, 0, 0.04, { back: true });
     } else if (o.kind === 'door') {
       faceOut(door, F, o.u0, o.u1, o.v0, o.v1, -D - 0.02);
       box(trim, F, o.u0 - 0.06, o.u1 + 0.06, o.v1, o.v1 + 0.16, 0, 0.05, { back: true });
     }
   }
 
-  // ---- cornice and parapet
+  // ---- cornice (bracketed, with dentils on the ornate fronts) and parapet
   if (H >= 5 || stories >= 2) {
     box(trim, F, 0, L, H - 0.42, H - 0.28, 0, 0.08, { back: true });
     box(trim, F, 0, L, H - 0.28, H - 0.14, 0, 0.16, { back: true });
     box(trim, F, 0, L, H - 0.14, H, 0, 0.26, { back: true });
+    if (ornate) {
+      const nb = Math.max(2, Math.round(L / 0.9)), sb = L / nb;
+      for (let i = 0; i <= nb; i++) {
+        const u = Math.min(L - 0.08, Math.max(0.08, i * sb));
+        box(trim, F, u - 0.07, u + 0.07, H - 0.78, H - 0.42, 0, 0.2, { back: true });     // brackets
+      }
+      const nd = Math.max(2, Math.round(L / 0.15));
+      for (let i = 0; i < nd; i++) {
+        const u = (i + 0.5) * (L / nd);
+        box(trim, F, u - 0.035, u + 0.035, H - 0.5, H - 0.42, 0.08, 0.15, { back: true }); // dentils
+      }
+    }
     box(wallB, F, 0, L, H, H + 0.55, -0.3, 0.02, { bottom: true });
     box(trim, F, 0, L, H + 0.55, H + 0.62, -0.34, 0.06, { bottom: true });
+  }
+  // a downspout at one end of the longer fronts
+  if (L > 8 && opts.downspout) {
+    const u = opts.downspout > 0 ? L - 0.35 : 0.35;
+    box(frame, F, u - 0.05, u + 0.05, 0.1, H + 0.5, 0.06, 0.16, {});
+    box(frame, F, u - 0.05, u + 0.35 * Math.sign(opts.downspout), 0.1, 0.2, 0.06, 0.3, {});
   }
 }
