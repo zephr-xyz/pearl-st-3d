@@ -15,6 +15,13 @@ needed to run the viewer.
 | `mode=textured\|color\|wireframe` | render mode |
 | `capture=1` | no interface, no eased camera, loading overlay removed at once |
 | `seed=<text>` | the world seed (default `pearl`); all painted variation is a hash of the seed and what it decorates, never `Math.random` |
+| `lit=0` | the old lighting (three fixed lights, canvas sky, ACES) instead of the Boulder sun, physical sky, cascaded shadow and AgX |
+| `mat=0` | the old painted canvas walls and flat ground instead of the baked surfaces and 3D facades |
+| `post=0` | no camera post (HDR target, sharpening, bloom, vignette, grain) |
+| `date=MM-DD`, `tod=<hour>` | sun date and local decimal hour (default April 17, 16.75: the April photo series) |
+| `expo=`, `envi=`, `suni=`, `haze=` | multipliers and values for exposure, sky-light intensity (default 0.2), sun intensity and haze density, for attribution runs |
+| `bloom=`, `grain=`, `sharp=`, `vig=` | post strengths |
+| `q=low\|med\|high` | shadow map size per cascade (1024, 2048, 4096) |
 
 `window.__ready` is set once frames are being drawn. `window.__app.stats()` returns frame time
 (median and p95 ms), draw calls, triangles, geometries, textures, programs and the camera.

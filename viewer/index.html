@@ -125,6 +125,7 @@ import materials from './src/materials/materials.js';
 import { attachDecal } from './src/decal.js';
 import { createEnvironment } from './src/env.js';
 import { FacadeBuckets, buildWall } from './src/facades.js';
+import { createPost } from './src/post.js';
 
 const canvas = document.getElementById('canvas');
 const tooltip = document.getElementById('tooltip');
@@ -277,9 +278,15 @@ scene.background = skyTex;
   env = createEnvironment(renderer, scene, {
     date: PARAMS.get('date') || '04-17', hour: PARAMS.has('tod') ? +PARAMS.get('tod') : 16.75,
     quality: PARAMS.get('q') || 'med', exposureScale: PARAMS.has('expo') ? +PARAMS.get('expo') : 1,
-    envIntensity: PARAMS.has('envi') ? +PARAMS.get('envi') : 1, sunScale: PARAMS.has('suni') ? +PARAMS.get('suni') : 1,
+    envIntensity: PARAMS.has('envi') ? +PARAMS.get('envi') : undefined, sunScale: PARAMS.has('suni') ? +PARAMS.get('suni') : 1,
+    haze: PARAMS.has('haze') ? +PARAMS.get('haze') : undefined,
   });
 }
+// camera post (post=0 turns it off): HDR target, sharpening, bloom, AgX, vignette, grain
+const post = (LIT && PARAMS.get('post') !== '0') ? createPost(renderer, scene, camera, {
+  bloom: PARAMS.has('bloom') ? +PARAMS.get('bloom') : undefined, grain: PARAMS.has('grain') ? +PARAMS.get('grain') : undefined,
+  sharpen: PARAMS.has('sharp') ? +PARAMS.get('sharp') : undefined, vignette: PARAMS.has('vig') ? +PARAMS.get('vig') : undefined,
+}) : null;
 
 // Load scene data
 setProgress(10, 'Loading buildings...');
@@ -2509,20 +2516,24 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (post) { const s = renderer.getDrawingBufferSize(new THREE.Vector2()); post.setSize(s.x, s.y); }
 });
 
 setProgress(100, 'Ready');
 if (CAPTURE) loadingOverlay.style.display = 'none';
 else setTimeout(() => loadingOverlay.classList.add('hidden'), 300);
 
+renderer.info.autoReset = false;   // stats() reports every pass of a frame, not only the last
 function animate() {
   requestAnimationFrame(animate);
+  renderer.info.reset();
   const t = performance.now();
   if (frameCount > 0) { frameTimes.push(t - lastFrameT); if (frameTimes.length > 240) frameTimes.shift(); }
   lastFrameT = t;
   controls.update();
   if (env) env.update(camera);
-  renderer.render(scene, camera);
+  if (post) post.render(renderer.toneMappingExposure, CAPTURE ? 0 : frameCount);
+  else renderer.render(scene, camera);
   if (++frameCount === 5) window.__ready = true;
 }
 animate();

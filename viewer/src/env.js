@@ -77,6 +77,10 @@ export function createEnvironment(renderer, scene, opts = {}) {
   sun.shadow.radius = 2;
   scene.add(sun);
 
+  // aerial perspective: the far blocks and the mountains fade into the horizon's haze
+  // (colour in linear scene units, close to the sky dome just above the horizon)
+  scene.fog = new THREE.FogExp2(new THREE.Color().setRGB(0.62, 0.72, 0.9, THREE.LinearSRGBColorSpace), opts.haze ?? 0.00028);
+
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
   const skyScene = new THREE.Scene();
@@ -109,11 +113,11 @@ export function createEnvironment(renderer, scene, opts = {}) {
     scene.environment = envRT.texture;
     // the Sky dome is bright in its own units: at 1.0 the sky light alone put shaded walls at
     // 0.22 linear and swamped the sun; 0.2 gives the photographs' sun-to-shade ratio (~3.5:1)
-    scene.environmentIntensity = opts.envIntensity ?? 0.2;
+    scene.environmentIntensity = opts.envIntensity ?? 0.17;
     // exposure: a sunny-16 anchor lifted for the shade, falling with the sun (the photos of
     // the street expose for the shaded facades and let the sky clip)
     const Eh = Math.max(Math.sin(el), 0.05);
-    state.exposure = (0.45 / Math.pow(Eh, 0.45)) * (opts.exposureScale ?? 1);
+    state.exposure = (0.52 / Math.pow(Eh, 0.45)) * (opts.exposureScale ?? 1);
     renderer.toneMappingExposure = state.exposure;
   }
 
