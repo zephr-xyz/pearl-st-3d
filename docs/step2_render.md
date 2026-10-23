@@ -83,6 +83,27 @@ The frame is cheaper despite more triangles because the post chain renders throu
 target and the GPU is better used; the call count is the next thing to cut (one mesh per
 material per building, then per block).
 
+## Content pass (same day, commit a367f7c and after)
+
+Asked for: more realistic facades, roads and trees, not lighting.
+
+- **Trees**: 3DSceneRenderer's vegetation module (grown templates, leaf atlas painted in
+  workers, bark recipes, three detail levels, wind, ground shade) at the 201 OSM positions,
+  through a stand-in route and layout in `viewer/src/pearlWorld.js`. Cast-iron grates under the
+  mall trees. The old dodecahedron blobs are gone (`content=0` brings them back).
+- **Facades**: arched heads with keystones (segmental on Victorian fronts, round on
+  Romanesque), bracketed cornices with dentils on the ornate fronts, canvas awnings per
+  storefront bay where the style describes one, the shop's name lettered on the fascia, a
+  downspout on a third of the long fronts.
+- **Roads**: the mall paved with brick pavers building to building (22 m), streets at their
+  carriageway widths with a concrete sidewalk ribbon a kerb's height up on each side.
+
+Measured against the photos: mall_e now sits inside the envelope on everything but
+clipping; the Mountain Sun front the same; the Boulder Theater and PosterScene fronts are
+still bright and flat (sun-facing) and the Odd Fellows front a little dark (shaded). Texture
+on the mall views rose again (blk16 6.2 to 7.7, hp1 3.2 to 3.8) with the trees and the awnings
+in frame.
+
 ## Open work
 
 - Batch the facades per material across buildings and cull far ones (draw calls).

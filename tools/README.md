@@ -18,6 +18,7 @@ needed to run the viewer.
 | `lit=0` | the old lighting (three fixed lights, canvas sky, ACES) instead of the Boulder sun, physical sky, cascaded shadow and AgX |
 | `mat=0` | the old painted canvas walls and flat ground instead of the baked surfaces and 3D facades |
 | `post=0` | no camera post (HDR target, sharpening, bloom, vignette, grain) |
+| `content=0` | the old blob trees instead of the grown trees (3DSceneRenderer's vegetation module) and tree grates |
 | `date=MM-DD`, `tod=<hour>` | sun date and local decimal hour (default April 17, 16.75: the April photo series) |
 | `expo=`, `envi=`, `suni=`, `haze=` | multipliers and values for exposure, sky-light intensity (default 0.2), sun intensity and haze density, for attribution runs |
 | `bloom=`, `grain=`, `sharp=`, `vig=` | post strengths |
